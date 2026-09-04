@@ -28,7 +28,7 @@ export default function Layout() {
     { to: '/student/history', icon: '📋', label: 'Test History' },
   ];
 
-  const links = user?.role === 'teacher' ? teacherLinks : studentLinks;
+  const links = user?.role?.toUpperCase() === 'TEACHER' ? teacherLinks : studentLinks;
   
   // Format breadcrumb based on path
   const pathParts = location.pathname.split('/').filter(Boolean);

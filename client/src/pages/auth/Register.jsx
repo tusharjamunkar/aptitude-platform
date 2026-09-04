@@ -9,7 +9,7 @@ export default function Register() {
     email: '',
     password: '',
     confirmPassword: '',
-    role: 'student'
+    role: 'STUDENT'
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -37,7 +37,7 @@ export default function Register() {
       toast.success('Registration successful! Please login. 🎉');
       navigate('/login');
     } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed. Please try again.');
+      setError(err.response?.data?.error || err.response?.data?.message || 'Registration failed. Please try again.');
       toast.error('Registration failed 😢');
     } finally {
       setLoading(false);
@@ -150,18 +150,18 @@ export default function Register() {
               <label className="block text-sm font-bold text-slate-700 mb-3">I am a...</label>
               <div className="flex gap-4">
                 <div 
-                  onClick={() => setFormData({...formData, role: 'student'})}
-                  className={`flex-1 cursor-pointer rounded-2xl p-4 border-2 transition-all text-center ${formData.role === 'student' ? 'border-indigo-600 bg-indigo-50 shadow-md transform scale-105' : 'border-gray-200 hover:border-indigo-300'}`}
+                  onClick={() => setFormData({...formData, role: 'STUDENT'})}
+                  className={`flex-1 cursor-pointer rounded-2xl p-4 border-2 transition-all text-center ${formData.role === 'STUDENT' ? 'border-indigo-600 bg-indigo-50 shadow-md transform scale-105' : 'border-gray-200 hover:border-indigo-300'}`}
                 >
                   <div className="text-3xl mb-2">👨🎓</div>
-                  <div className={`font-bold ${formData.role === 'student' ? 'text-indigo-700' : 'text-gray-600'}`}>Student</div>
+                  <div className={`font-bold ${formData.role === 'STUDENT' ? 'text-indigo-700' : 'text-gray-600'}`}>Student</div>
                 </div>
                 <div 
-                  onClick={() => setFormData({...formData, role: 'teacher'})}
-                  className={`flex-1 cursor-pointer rounded-2xl p-4 border-2 transition-all text-center ${formData.role === 'teacher' ? 'border-indigo-600 bg-indigo-50 shadow-md transform scale-105' : 'border-gray-200 hover:border-indigo-300'}`}
+                  onClick={() => setFormData({...formData, role: 'TEACHER'})}
+                  className={`flex-1 cursor-pointer rounded-2xl p-4 border-2 transition-all text-center ${formData.role === 'TEACHER' ? 'border-indigo-600 bg-indigo-50 shadow-md transform scale-105' : 'border-gray-200 hover:border-indigo-300'}`}
                 >
                   <div className="text-3xl mb-2">👩🏫</div>
-                  <div className={`font-bold ${formData.role === 'teacher' ? 'text-indigo-700' : 'text-gray-600'}`}>Teacher</div>
+                  <div className={`font-bold ${formData.role === 'TEACHER' ? 'text-indigo-700' : 'text-gray-600'}`}>Teacher</div>
                 </div>
               </div>
             </div>

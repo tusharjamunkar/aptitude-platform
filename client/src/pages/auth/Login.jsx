@@ -20,7 +20,7 @@ export default function Login() {
       const response = await api.post('/auth/login', { email, password });
       login(response.data.token, response.data.user);
       toast.success('Logged in successfully! 🎉');
-      if (response.data.user.role === 'teacher') {
+      if (response.data.user.role?.toUpperCase() === 'TEACHER') {
         navigate('/teacher');
       } else {
         navigate('/student');
