@@ -71,7 +71,7 @@ export default function TeacherAnalytics() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="card border-red-200 bg-red-50/30">
-          <h2 className="text-lg font-semibold text-red-800 mb-4 flex items-center"><span className="mr-2">⚠️</span> At-Risk Students (< 50%)</h2>
+          <h2 className="text-lg font-semibold text-red-800 mb-4 flex items-center"><span className="mr-2">⚠️</span> At-Risk Students (&lt; 50%)</h2>
           <ul className="space-y-3">
             {data.atRiskStudents.map((s, i) => (
               <li key={i} className="flex justify-between items-center bg-white p-3 rounded shadow-sm border border-red-100">
