@@ -1,0 +1,114 @@
+const router = require('express').Router();
+const { PrismaClient } = require('@prisma/client');
+const { authenticate, requireStudent, requireTeacher } = require('../middleware/auth');
+const { calculateTopicPerformance, calculateWeakTopics } = require('../services/analyticsService');
+
+const prisma = new PrismaClient();
+
+router.use(authenticate);
+
+router.get('/student', requireStudent, async (req, res) => {
+  try {
+    const attempts = await prisma.testAttempt.findMany({
+      where: { studentId: req.user.id },
+      include: { test: true, answers: { include: { question: true } } },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const totalAttempts = attempts.length;
+    const completedAttempts = attempts.filter(a => a.status === 'COMPLETED');
+    const totalCompleted = completedAttempts.length;
+    const totalDisqualified = attempts.filter(a => a.status === 'DISQUALIFIED').length;
+    
+    let totalScore = 0;
+    let totalPossible = 0;
+    
+    const testHistory = attempts.map(a => {
+      const percentage = a.totalMarks > 0 ? (a.score / a.totalMarks) * 100 : 0;
+      if (a.status === 'COMPLETED') {
+        totalScore += a.score;
+        totalPossible += a.totalMarks;
+      }
+      return {
+        testId: a.testId,
+        testTitle: a.test.title,
+        topic: a.test.topic,
+        score: a.score,
+        totalMarks: a.totalMarks,
+        percentage,
+        date: a.createdAt,
+        status: a.status
+      };
+    });
+
+    const averageScore = totalPossible > 0 ? (totalScore / totalPossible) * 100 : 0;
+    
+    const allAnswers = attempts.flatMap(a => a.answers);
+    const topicPerformance = calculateTopicPerformance(allAnswers);
+    const weakTopics = calculateWeakTopics(topicPerformance).map(t => t.topic);
+    const strongTopics = topicPerformance.filter(t => t.avgPercentage >= 80).map(t => t.topic);
+
+    res.json({
+      totalAttempts, totalCompleted, totalDisqualified, averageScore,
+      testHistory, topicPerformance, weakTopics, strongTopics,
+      recentTests: testHistory.slice(0, 5)
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch student analytics' });
+  }
+});
+
+router.get('/teacher', requireTeacher, async (req, res) => {
+  try {
+    const tests = await prisma.test.findMany({
+      where: { createdBy: req.user.id },
+      include: { attempts: { include: { answers: { include: { question: true } } } } }
+    });
+
+    let totalStudents = new Set();
+    let classTotalScore = 0;
+    let classTotalMarks = 0;
+
+    const testBreakdown = tests.map(test => {
+      const testAttempts = test.attempts.filter(a => a.status === 'COMPLETED');
+      const disqualified = test.attempts.filter(a => a.status === 'DISQUALIFIED');
+      
+      let testTotalScore = 0;
+      let testTotalMarks = 0;
+      let passes = 0;
+
+      testAttempts.forEach(a => {
+        totalStudents.add(a.studentId);
+        testTotalScore += a.score;
+        testTotalMarks += a.totalMarks;
+        classTotalScore += a.score;
+        classTotalMarks += a.totalMarks;
+        if (a.totalMarks > 0 && (a.score / a.totalMarks) >= 0.5) passes++;
+      });
+
+      const avgScore = testTotalMarks > 0 ? (testTotalScore / testTotalMarks) * 100 : 0;
+      const passRate = testAttempts.length > 0 ? (passes / testAttempts.length) * 100 : 0;
+
+      return {
+        testId: test.id, title: test.title, totalAttempts: testAttempts.length,
+        avgScore, passRate, disqualifiedCount: disqualified.length
+      };
+    });
+
+    const averageClassScore = classTotalMarks > 0 ? (classTotalScore / classTotalMarks) * 100 : 0;
+
+    res.json({
+      totalStudents: totalStudents.size,
+      totalTests: tests.length,
+      averageClassScore,
+      testBreakdown,
+      topPerformers: [], 
+      atRiskStudents: [], 
+      topicWeakness: []
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch teacher analytics' });
+  }
+});
+
+module.exports = router;

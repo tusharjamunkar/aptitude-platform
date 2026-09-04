@@ -1,0 +1,144 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(cuid())
+  name          String
+  email         String   @unique
+  password      String
+  role          Role     @default(STUDENT)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  questions     Question[]
+  tests         Test[]   @relation("TeacherTests")
+  attempts      TestAttempt[]
+  milestones    StudentMilestone[]
+}
+
+enum Role {
+  TEACHER
+  STUDENT
+}
+
+model Test {
+  id              String   @id @default(cuid())
+  title           String
+  subject         String
+  topic           String
+  description     String?
+  duration        Int      // in minutes
+  scheduledAt     DateTime?
+  deadline        DateTime?
+  isActive        Boolean  @default(false)
+  isMandatory     Boolean  @default(false)
+  warningsAllowed Int      @default(1)
+  createdBy       String
+  teacher         User     @relation("TeacherTests", fields: [createdBy], references: [id])
+  questions       Question[]
+  attempts        TestAttempt[]
+  milestoneId     String?
+  milestone       Milestone? @relation(fields: [milestoneId], references: [id])
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Question {
+  id            String   @id @default(cuid())
+  questionText  String
+  optionA       String
+  optionB       String
+  optionC       String
+  optionD       String
+  correctAnswer String   // 'A', 'B', 'C', or 'D'
+  marks         Int      @default(1)
+  topic         String
+  difficulty    Difficulty @default(MEDIUM)
+  negativeMarks Float    @default(0)
+  testId        String?
+  test          Test?    @relation(fields: [testId], references: [id], onDelete: SetNull)
+  createdBy     String
+  teacher       User     @relation(fields: [createdBy], references: [id])
+  answers       StudentAnswer[]
+  createdAt     DateTime @default(now())
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+model TestAttempt {
+  id              String        @id @default(cuid())
+  studentId       String
+  student         User          @relation(fields: [studentId], references: [id])
+  testId          String
+  test            Test          @relation(fields: [testId], references: [id])
+  startedAt       DateTime      @default(now())
+  submittedAt     DateTime?
+  score           Float         @default(0)
+  totalMarks      Float         @default(0)
+  status          AttemptStatus @default(IN_PROGRESS)
+  tabSwitchCount  Int           @default(0)
+  warningGiven    Boolean       @default(false)
+  disqualifiedAt  DateTime?
+  disqualReason   String?
+  answers         StudentAnswer[]
+  createdAt       DateTime      @default(now())
+  
+  @@unique([studentId, testId])
+}
+
+enum AttemptStatus {
+  IN_PROGRESS
+  COMPLETED
+  DISQUALIFIED
+}
+
+model StudentAnswer {
+  id              String      @id @default(cuid())
+  attemptId       String
+  attempt         TestAttempt @relation(fields: [attemptId], references: [id])
+  questionId      String
+  question        Question    @relation(fields: [questionId], references: [id])
+  selectedAnswer  String?     // null = not answered
+  isCorrect       Boolean     @default(false)
+  timeTaken       Int         @default(0) // seconds
+  createdAt       DateTime    @default(now())
+  
+  @@unique([attemptId, questionId])
+}
+
+model Milestone {
+  id                  String   @id @default(cuid())
+  title               String
+  description         String
+  requiredTestsCount  Int
+  badgeName           String
+  badgeIcon           String   @default("🏆")
+  minAverageScore     Float    @default(0)
+  createdAt           DateTime @default(now())
+  tests               Test[]
+  studentMilestones   StudentMilestone[]
+}
+
+model StudentMilestone {
+  id              String    @id @default(cuid())
+  studentId       String
+  student         User      @relation(fields: [studentId], references: [id])
+  milestoneId     String
+  milestone       Milestone @relation(fields: [milestoneId], references: [id])
+  achievedAt      DateTime?
+  testsCompleted  Int       @default(0)
+  isAchieved      Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  
+  @@unique([studentId, milestoneId])
+}
