@@ -1,108 +1,102 @@
-import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import api from '../../api/axios';
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import StatCard from '../../components/StatCard';
-import toast from 'react-hot-toast';
 
 export default function TestResults() {
   const { id } = useParams();
-  const [data, setData] = useState(null);
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [results, setResults] = useState(null);
 
   useEffect(() => {
-    fetchResults();
+    setTimeout(() => {
+      setResults({
+        testName: 'Midterm Aptitude Check',
+        topic: 'Mixed Topics',
+        stats: { totalAttempts: 145, avgScore: 68, passRate: 75, disqualified: 3 },
+        students: [
+          { rank: 1, name: 'Alex Johnson', score: 98, time: '38m', status: 'Passed' },
+          { rank: 2, name: 'Sarah Williams', score: 95, time: '41m', status: 'Passed' },
+          { rank: 3, name: 'Michael Chen', score: 92, time: '44m', status: 'Passed' },
+          { rank: 4, name: 'Emily Davis', score: 88, time: '40m', status: 'Passed' },
+          { rank: 120, name: 'John Doe', score: 45, time: '45m', status: 'Failed' },
+        ]
+      });
+      setLoading(false);
+    }, 600);
   }, [id]);
 
-  const fetchResults = async () => {
-    try {
-      const res = await api.get(`/tests/${id}/results`).catch(() => ({
-        data: {
-          testInfo: { title: 'Quantitative Aptitude 1', date: '2023-10-15', duration: 60, totalMarks: 50 },
-          stats: { totalAttempts: 45, avgScore: 35.5, passRate: 75, disqualified: 2 },
-          students: [
-            { id: '1', name: 'John Doe', score: 45, percentage: 90, status: 'COMPLETED', timeSpent: 45 },
-            { id: '2', name: 'Jane Smith', score: 0, percentage: 0, status: 'DISQUALIFIED', timeSpent: 12 },
-            { id: '3', name: 'Bob Wilson', score: 38, percentage: 76, status: 'COMPLETED', timeSpent: 55 }
-          ],
-          questionAnalysis: [
-            { qId: 'Q1', successRate: 85 },
-            { qId: 'Q2', successRate: 45 },
-            { qId: 'Q3', successRate: 92 },
-            { qId: 'Q4', successRate: 30 }
-          ]
-        }
-      }));
-      setData(res.data);
-    } catch (err) {
-      toast.error('Failed to load results');
-    } finally {
-      setLoading(false);
-    }
+  if (loading) return <div className="flex justify-center p-20"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"></div></div>;
+
+  const getRankBadge = (rank) => {
+    if (rank === 1) return <span className="text-2xl drop-shadow-sm" title="First Place">🥇</span>;
+    if (rank === 2) return <span className="text-2xl drop-shadow-sm" title="Second Place">🥈</span>;
+    if (rank === 3) return <span className="text-2xl drop-shadow-sm" title="Third Place">🥉</span>;
+    return <span className="text-sm font-bold text-slate-500 bg-slate-100 w-8 h-8 rounded-full flex items-center justify-center border border-slate-200">#{rank}</span>;
   };
 
-  if (loading) return <div className="text-center py-10">Loading...</div>;
-  if (!data) return <div className="text-center py-10">No data found</div>;
-
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-end">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">{data.testInfo.title} - Results</h1>
-          <p className="text-gray-500 mt-1">Date: {data.testInfo.date} | Duration: {data.testInfo.duration} mins | Total Marks: {data.testInfo.totalMarks}</p>
-        </div>
-        <button className="btn-secondary flex items-center">
-          <span className="mr-2">📥</span> Export CSV
+    <div className="space-y-8 pb-12">
+      {/* Header */}
+      <div className="flex items-center gap-4">
+        <button onClick={() => navigate('/teacher')} className="p-2 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-500 hover:text-indigo-600 hover:border-indigo-200 transition-colors">
+          ←
         </button>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Total Attempts" value={data.stats.totalAttempts} icon="👥" color="blue" />
-        <StatCard title="Average Score" value={data.stats.avgScore} icon="📊" color="green" subtitle={`Out of ${data.testInfo.totalMarks}`} />
-        <StatCard title="Pass Rate" value={`${data.stats.passRate}%`} icon="✅" color="purple" />
-        <StatCard title="Disqualified" value={data.stats.disqualified} icon="⚠️" color="red" />
-      </div>
-
-      <div className="card mb-6">
-        <h2 className="text-lg font-semibold mb-4">Question Success Rate</h2>
-        <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data.questionAnalysis} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="qId" />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="successRate" fill="#10b981" name="Success Rate %" />
-            </BarChart>
-          </ResponsiveContainer>
+        <div>
+          <h1 className="text-2xl md:text-3xl font-black text-slate-800">{results.testName}</h1>
+          <p className="text-slate-500 font-medium">Results and Analysis • {results.topic}</p>
         </div>
       </div>
 
-      <div className="card">
-        <h2 className="text-lg font-semibold mb-4">Student Results</h2>
+      {/* Stats Row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StatCard title="Total Attempts" value={results.stats.totalAttempts} icon="👨🎓" gradient="blue" />
+        <StatCard title="Average Score" value={`${results.stats.avgScore}%`} icon="📊" gradient="purple" />
+        <StatCard title="Pass Rate" value={`${results.stats.passRate}%`} icon="✅" gradient="green" />
+        <StatCard title="Disqualified" value={results.stats.disqualified} icon="⚠️" gradient="orange" />
+      </div>
+
+      {/* Leaderboard */}
+      <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+        <div className="p-6 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+          <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">🏆 Class Leaderboard</h2>
+          <button className="btn-secondary py-1.5 text-sm flex items-center gap-2">
+            <span>📥</span> Export CSV
+          </button>
+        </div>
+        
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+          <table className="w-full text-left border-collapse">
             <thead>
-              <tr>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Student Name</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Score</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Percentage</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Time Spent</th>
+              <tr className="text-xs uppercase font-bold text-slate-400 border-b border-slate-100">
+                <th className="py-4 pl-6 w-16">Rank</th>
+                <th className="py-4">Student Name</th>
+                <th className="py-4 w-64">Score Bar</th>
+                <th className="py-4 text-center">Score</th>
+                <th className="py-4 text-center">Time</th>
+                <th className="py-4 pr-6 text-right">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
-              {data.students.map((student) => (
-                <tr key={student.id}>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{student.name}</td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <span className={`badge ${student.status === 'COMPLETED' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+            <tbody className="divide-y divide-slate-50">
+              {results.students.map((student, i) => (
+                <tr key={i} className={`hover:bg-slate-50/50 transition-colors ${i < 3 ? 'bg-amber-50/30' : ''}`}>
+                  <td className="py-4 pl-6">{getRankBadge(student.rank)}</td>
+                  <td className="py-4 font-bold text-slate-700">{student.name}</td>
+                  <td className="py-4 pr-4">
+                    <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full rounded-full ${student.score >= 80 ? 'bg-emerald-500' : student.score >= 60 ? 'bg-amber-400' : 'bg-red-400'}`}
+                        style={{ width: `${student.score}%` }}
+                      ></div>
+                    </div>
+                  </td>
+                  <td className="py-4 text-center font-black text-slate-800">{student.score}%</td>
+                  <td className="py-4 text-center text-sm font-medium text-slate-500">{student.time}</td>
+                  <td className="py-4 pr-6 text-right">
+                    <span className={`inline-block px-3 py-1 rounded-md text-xs font-bold border ${student.status === 'Passed' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-red-50 text-red-600 border-red-200'}`}>
                       {student.status}
                     </span>
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{student.score}</td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{student.percentage}%</td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{student.timeSpent} mins</td>
                 </tr>
               ))}
             </tbody>

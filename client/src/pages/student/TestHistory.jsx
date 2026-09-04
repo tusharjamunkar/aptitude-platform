@@ -1,98 +1,103 @@
-import { useState, useEffect } from 'react';
-import api from '../../api/axios';
+import React, { useState, useEffect } from 'react';
+import TopicBadge from '../../components/TopicBadge';
 
 export default function TestHistory() {
+  const [loading, setLoading] = useState(true);
   const [history, setHistory] = useState([]);
-  const [filter, setFilter] = useState('ALL'); // ALL, COMPLETED, DISQUALIFIED
+  const [filter, setFilter] = useState('All');
 
   useEffect(() => {
-    // Mock Data
-    setHistory([
-      { id: '1', title: 'Quantitative Aptitude Basics', topic: 'Number System', date: '2023-10-20T10:00:00Z', duration: 45, score: 40, totalMarks: 50, percentage: 80, status: 'COMPLETED' },
-      { id: '2', title: 'Logical Reasoning 1', topic: 'Logical Reasoning', date: '2023-10-18T14:30:00Z', duration: 30, score: 0, totalMarks: 30, percentage: 0, status: 'DISQUALIFIED' },
-      { id: '3', title: 'Data Interpretation Weekly', topic: 'Data Interpretation', date: '2023-10-15T09:00:00Z', duration: 60, score: 55, totalMarks: 60, percentage: 91.6, status: 'COMPLETED' },
-      { id: '4', title: 'Speed Math', topic: 'Mixed', date: '2023-10-10T16:00:00Z', duration: 15, score: 10, totalMarks: 20, percentage: 50, status: 'COMPLETED' }
-    ]);
+    setTimeout(() => {
+      setHistory([
+        { id: 1, title: 'Number System Advanced Test', topic: 'Number System', date: '2023-10-15', score: 85, total: 100, status: 'Completed', questions: 20 },
+        { id: 2, title: 'Weekly Mixed Aptitude', topic: 'Mixed', date: '2023-10-10', score: 65, total: 100, status: 'Completed', questions: 25 },
+        { id: 3, title: 'Logical Reasoning Basics', topic: 'Logical Reasoning', date: '2023-10-05', score: 45, total: 100, status: 'Completed', questions: 15 },
+        { id: 4, title: 'Speed Math Qualifier', topic: 'Mixed', date: '2023-09-28', score: 0, total: 50, status: 'Disqualified', questions: 10 },
+      ]);
+      setLoading(false);
+    }, 500);
   }, []);
 
-  const filteredHistory = history.filter(h => filter === 'ALL' || h.status === filter);
+  const filtered = filter === 'All' ? history : history.filter(h => h.status === filter);
+
+  if (loading) {
+    return <div className="flex justify-center p-20"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"></div></div>;
+  }
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-5xl mx-auto space-y-6 pb-12">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h1 className="text-2xl font-bold text-gray-900">Test History</h1>
-        <div className="flex bg-gray-100 p-1 rounded-lg">
-          {['ALL', 'COMPLETED', 'DISQUALIFIED'].map(f => (
+        <div>
+          <h1 className="text-3xl font-black text-slate-800 mb-1">📋 Test History</h1>
+          <p className="text-slate-500 font-medium">Review your past attempts and scores</p>
+        </div>
+        
+        {/* Filter Tabs */}
+        <div className="flex bg-white p-1 rounded-xl shadow-sm border border-slate-200">
+          {['All', 'Completed', 'Disqualified'].map(tab => (
             <button 
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${filter === f ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
+              key={tab}
+              onClick={() => setFilter(tab)}
+              className={`px-5 py-2 rounded-lg text-sm font-bold transition-all ${filter === tab ? 'bg-indigo-50 text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
             >
-              {f.charAt(0) + f.slice(1).toLowerCase()}
+              {tab}
             </button>
           ))}
         </div>
       </div>
 
-      <div className="card !p-0 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Test Details</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Score</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredHistory.map((attempt) => (
-                <tr key={attempt.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4">
-                    <p className="text-sm font-bold text-gray-900">{attempt.title}</p>
-                    <p className="text-xs text-gray-500 mt-1">{attempt.topic} • {attempt.duration} mins</p>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(attempt.date).toLocaleDateString()}
-                    <span className="block text-xs">{new Date(attempt.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`badge ${
-                      attempt.status === 'COMPLETED' ? 'bg-green-100 text-green-800' : 
-                      attempt.status === 'DISQUALIFIED' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {attempt.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {attempt.status === 'DISQUALIFIED' ? (
-                      <span className="text-red-600 font-bold">0</span>
-                    ) : (
-                      <div>
-                        <p className={`text-sm font-bold ${attempt.percentage >= 80 ? 'text-green-600' : attempt.percentage >= 50 ? 'text-yellow-600' : 'text-red-600'}`}>
-                          {attempt.percentage}%
-                        </p>
-                        <p className="text-xs text-gray-500">{attempt.score} / {attempt.totalMarks}</p>
+      {filtered.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {filtered.map(test => (
+            <div key={test.id} className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 hover:shadow-md transition-shadow relative overflow-hidden group">
+              <div className={`absolute top-0 left-0 w-2 h-full ${test.status === 'Disqualified' ? 'bg-red-500' : test.score >= 80 ? 'bg-emerald-500' : test.score >= 60 ? 'bg-amber-400' : 'bg-red-400'}`}></div>
+              
+              <div className="flex justify-between items-start mb-4 pl-4">
+                <div>
+                  <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-md mb-2 inline-block border border-slate-200">
+                    {test.topic}
+                  </span>
+                  <h3 className="text-lg font-bold text-slate-800 line-clamp-1">{test.title}</h3>
+                  <p className="text-sm font-medium text-slate-500 flex items-center gap-1 mt-1">
+                    📅 {new Date(test.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </p>
+                </div>
+                
+                <div className="text-right shrink-0 ml-4">
+                  {test.status === 'Completed' ? (
+                    <div className="flex flex-col items-center">
+                      <div className={`w-14 h-14 rounded-full flex items-center justify-center text-lg font-black border-4 shadow-sm ${test.score >= 80 ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : test.score >= 60 ? 'bg-amber-50 border-amber-100 text-amber-600' : 'bg-red-50 border-red-100 text-red-600'}`}>
+                        {test.score}%
                       </div>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button className="text-primary-600 hover:text-primary-900 bg-primary-50 px-3 py-1 rounded-md">View Details</button>
-                  </td>
-                </tr>
-              ))}
-              {filteredHistory.length === 0 && (
-                <tr>
-                  <td colSpan="5" className="px-6 py-12 text-center text-gray-500">
-                    No history found for the selected filter.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                    </div>
+                  ) : (
+                    <span className="bg-red-50 text-red-600 text-xs font-bold px-3 py-1.5 rounded-md border border-red-200 flex items-center gap-1">
+                      ⚠️ Disqualified
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="pl-4 pt-4 border-t border-slate-100 flex justify-between items-center">
+                <div className="text-sm font-medium text-slate-500">
+                  {test.questions} Questions • {test.total} Marks Total
+                </div>
+                {test.status === 'Completed' && (
+                  <button className="text-indigo-600 text-sm font-bold hover:text-indigo-800 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                    Review Details →
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
-      </div>
+      ) : (
+        <div className="bg-white rounded-3xl p-16 text-center border border-slate-200 border-dashed">
+          <div className="text-6xl mb-4">📭</div>
+          <h3 className="text-xl font-bold text-slate-700 mb-2">No history found</h3>
+          <p className="text-slate-500">You haven't taken any tests in this category yet.</p>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,115 +1,185 @@
-import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
+import { useAuth } from '../../context/AuthContext';
 import StatCard from '../../components/StatCard';
-import toast from 'react-hot-toast';
 
 export default function StudentDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [data, setData] = useState({
-    stats: { testsTaken: 0, avgScore: 0, milestones: 0, streak: 0 },
-    availableTests: [],
-    recentResults: [],
-    milestoneProgress: { current: 5, target: 10, nextBadge: 'Silver Pro' }
-  });
   const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({ testsTaken: 0, avgScore: 0, milestones: 0, streak: 0 });
+  const [availableTests, setAvailableTests] = useState([]);
+  const [recentResults, setRecentResults] = useState([]);
+  const [milestoneProgress, setMilestoneProgress] = useState({ title: 'Novice', completed: 0, total: 5, percentage: 0 });
 
   useEffect(() => {
-    // Mock API call
+    // Mock data fetch - replace with actual API calls
     setTimeout(() => {
-      setData({
-        stats: { testsTaken: 12, avgScore: 78, milestones: 3, streak: 5 },
-        availableTests: [
-          { _id: '1', title: 'Weekly Aptitude Test', topic: 'Mixed', duration: 45, deadline: new Date(Date.now() + 86400000).toISOString() },
-          { _id: '2', title: 'Data Interpretation Basics', topic: 'Data Interpretation', duration: 30, deadline: new Date(Date.now() + 172800000).toISOString() }
-        ],
-        recentResults: [
-          { id: '1', title: 'Number System Quiz', score: 85, date: '2023-10-20' },
-          { id: '2', title: 'Algebra Fundamentals', score: 92, date: '2023-10-18' }
-        ],
-        milestoneProgress: { current: 12, target: 20, nextBadge: 'Gold Master' }
-      });
+      setStats({ testsTaken: 12, avgScore: 76, milestones: 3, streak: 5 });
+      setAvailableTests([
+        { _id: '1', title: 'Number System Basics', topic: 'Number System', duration: 45, questionsCount: 20, deadline: new Date(Date.now() + 86400000).toISOString() },
+        { _id: '2', title: 'Advanced Percentages', topic: 'Percentages', duration: 60, questionsCount: 25, deadline: null },
+      ]);
+      setRecentResults([
+        { _id: '1', testName: 'Logical Reasoning Test 1', score: 85, date: new Date().toISOString() },
+        { _id: '2', testName: 'Time and Work Quiz', score: 55, date: new Date(Date.now() - 86400000).toISOString() },
+      ]);
+      setMilestoneProgress({ title: 'Scholar', completed: 7, total: 10, percentage: 70 });
       setLoading(false);
-    }, 500);
+    }, 1000);
   }, []);
 
-  const handleStartTest = (testId) => {
-    navigate(`/take-test/${testId}`);
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 18) return 'Good afternoon';
+    return 'Good evening';
   };
 
-  if (loading) return <div className="text-center py-10">Loading...</div>;
+  const getTopicColor = (topic) => {
+    const colors = {
+      'Number System': 'bg-blue-100 text-blue-800 border-blue-200',
+      'Percentages': 'bg-green-100 text-green-800 border-green-200',
+      'Logical Reasoning': 'bg-purple-100 text-purple-800 border-purple-200',
+    };
+    return colors[topic] || 'bg-slate-100 text-slate-800 border-slate-200';
+  };
+
+  if (loading) {
+    return <div className="flex justify-center items-center h-64"><div className="animate-spin rounded-full h-12 w-12 border-b-4 border-indigo-600"></div></div>;
+  }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Welcome back, {user?.name}! 👋</h1>
-        <p className="text-gray-500">Here's your progress and upcoming tasks.</p>
+    <div className="space-y-8 pb-10">
+      {/* Hero Banner */}
+      <div className="bg-gradient-to-r from-indigo-600 to-purple-700 rounded-3xl p-8 text-white shadow-xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4"></div>
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div>
+            <h1 className="text-3xl md:text-4xl font-black mb-2 flex items-center gap-3">
+              {getGreeting()}, {user?.name.split(' ')[0]}! 👋
+            </h1>
+            <p className="text-indigo-100 text-lg font-medium">Ready to ace your tests today?</p>
+          </div>
+          <div className="text-7xl drop-shadow-2xl hidden md:block animate-bounce-slow">
+            🎯
+          </div>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Tests Taken" value={data.stats.testsTaken} icon="📝" color="blue" />
-        <StatCard title="Average Score" value={`${data.stats.avgScore}%`} icon="🎯" color="green" />
-        <StatCard title="Milestones Earned" value={data.stats.milestones} icon="🏆" color="purple" />
-        <StatCard title="Current Streak" value={`${data.stats.streak} Days`} icon="🔥" color="yellow" />
+      {/* Stats Row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StatCard title="Tests Taken" value={stats.testsTaken} icon="📝" gradient="blue" />
+        <StatCard title="Avg Score" value={`${stats.avgScore}%`} icon="📈" gradient="green" trend="+5%" />
+        <StatCard title="Milestones" value={stats.milestones} icon="🏆" gradient="purple" />
+        <StatCard title="Day Streak" value={stats.streak} icon="🔥" gradient="orange" subtitle="Keep it up!" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Available Tests */}
         <div className="lg:col-span-2 space-y-4">
-          <h2 className="text-lg font-semibold">Available Tests</h2>
-          {data.availableTests.length === 0 ? (
-            <div className="card text-center py-8 text-gray-500">No tests available right now.</div>
-          ) : (
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+              📚 Available Tests
+              <span className="bg-indigo-100 text-indigo-700 text-sm py-1 px-3 rounded-full">{availableTests.length}</span>
+            </h2>
+          </div>
+          
+          {availableTests.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {data.availableTests.map(test => (
-                <div key={test._id} className="card flex flex-col h-full border-l-4 border-l-primary-500">
-                  <div className="flex-1">
-                    <h3 className="font-bold text-lg text-gray-900">{test.title}</h3>
-                    <div className="mt-2 space-y-1 text-sm text-gray-600">
-                      <p>📚 Topic: {test.topic}</p>
-                      <p>⏱️ Duration: {test.duration} mins</p>
-                      <p className="text-red-600">⏰ Deadline: {new Date(test.deadline).toLocaleDateString()}</p>
+              {availableTests.map(test => (
+                <div key={test._id} className="card flex flex-col relative overflow-hidden group">
+                  <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500 group-hover:w-2 transition-all"></div>
+                  <div className="pl-4">
+                    <div className={`inline-block px-3 py-1 rounded-md text-xs font-bold border mb-3 ${getTopicColor(test.topic)}`}>
+                      {test.topic}
                     </div>
-                  </div>
-                  <div className="mt-4 pt-4 border-t border-gray-100">
-                    <button onClick={() => handleStartTest(test._id)} className="w-full btn-primary">Start Test</button>
+                    <h3 className="text-lg font-bold text-slate-800 mb-2">{test.title}</h3>
+                    <div className="flex items-center gap-4 text-sm text-slate-500 mb-4 font-medium">
+                      <span className="flex items-center gap-1">⏱️ {test.duration}m</span>
+                      <span className="flex items-center gap-1">📋 {test.questionsCount} Qs</span>
+                    </div>
+                    {test.deadline && (
+                      <div className="text-xs font-semibold text-red-500 bg-red-50 inline-block px-2 py-1 rounded mb-4 border border-red-100">
+                        ⏳ Ends in {Math.ceil((new Date(test.deadline) - new Date()) / (1000 * 60 * 60 * 24))} days
+                      </div>
+                    )}
+                    <div className="mt-auto pt-4 border-t border-slate-100">
+                      <button 
+                        onClick={() => navigate(`/take-test/${test._id}`)}
+                        className="w-full btn-primary py-2 text-sm"
+                      >
+                        Start Test →
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
+          ) : (
+            <div className="bg-white rounded-2xl p-12 text-center border border-slate-200 border-dashed">
+              <div className="text-5xl mb-4">🎉</div>
+              <h3 className="text-xl font-bold text-slate-700 mb-2">No pending tests!</h3>
+              <p className="text-slate-500">You're all caught up. Check back later for new assignments.</p>
+            </div>
           )}
         </div>
 
+        {/* Recent Results */}
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold">Recent Results</h2>
-          <div className="card p-0 overflow-hidden divide-y divide-gray-100">
-            {data.recentResults.map(res => (
-              <div key={res.id} className="p-4 flex justify-between items-center hover:bg-gray-50">
-                <div>
-                  <p className="font-medium text-gray-900">{res.title}</p>
-                  <p className="text-xs text-gray-500">{new Date(res.date).toLocaleDateString()}</p>
-                </div>
-                <div className={`font-bold ${res.score >= 80 ? 'text-green-600' : res.score >= 50 ? 'text-yellow-600' : 'text-red-600'}`}>
-                  {res.score}%
-                </div>
-              </div>
-            ))}
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">📊 Recent Results</h2>
+            <button onClick={() => navigate('/student/history')} className="text-indigo-600 text-sm font-bold hover:underline">View All →</button>
           </div>
-          <Link to="/student/history" className="block text-center text-primary-600 text-sm font-medium hover:underline">View All History →</Link>
+          
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+            {recentResults.length > 0 ? (
+              <div className="divide-y divide-slate-100">
+                {recentResults.map(result => (
+                  <div key={result._id} className="p-4 hover:bg-slate-50 transition-colors flex items-center justify-between">
+                    <div>
+                      <p className="font-bold text-slate-800 mb-1">{result.testName}</p>
+                      <p className="text-xs font-medium text-slate-500">{new Date(result.date).toLocaleDateString()}</p>
+                    </div>
+                    <div className={`px-3 py-1.5 rounded-lg font-bold text-sm shadow-sm ${result.score >= 60 ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-red-100 text-red-700 border border-red-200'}`}>
+                      {result.score}%
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-8 text-center text-slate-500">
+                No recent results found.
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="card bg-gradient-to-r from-blue-50 to-indigo-50 border-none">
-        <div className="flex justify-between items-end mb-2">
-          <div>
-            <h3 className="font-bold text-gray-900">Next Milestone: {data.milestoneProgress.nextBadge}</h3>
-            <p className="text-sm text-gray-600">{data.milestoneProgress.target - data.milestoneProgress.current} tests left</p>
+      {/* Milestone Strip */}
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 relative overflow-hidden">
+        <div className="absolute right-0 bottom-0 w-32 h-32 bg-purple-50 rounded-full blur-3xl"></div>
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="flex items-center gap-4">
+            <div className="text-4xl bg-purple-100 p-3 rounded-2xl shadow-inner border border-purple-200">🏆</div>
+            <div>
+              <h3 className="font-bold text-slate-800 text-lg">Next milestone: {milestoneProgress.title}</h3>
+              <p className="text-sm font-medium text-slate-500">{milestoneProgress.completed} of {milestoneProgress.total} tests completed</p>
+            </div>
           </div>
-          <span className="text-lg font-bold text-primary-700">{Math.round((data.milestoneProgress.current/data.milestoneProgress.target)*100)}%</span>
-        </div>
-        <div className="w-full bg-gray-200 rounded-full h-2.5">
-          <div className="bg-primary-600 h-2.5 rounded-full" style={{ width: `${(data.milestoneProgress.current/data.milestoneProgress.target)*100}%` }}></div>
+          <div className="flex-1 max-w-md w-full">
+            <div className="flex justify-between text-xs font-bold text-slate-500 mb-2">
+              <span>Progress</span>
+              <span className="text-indigo-600">{milestoneProgress.percentage}%</span>
+            </div>
+            <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden shadow-inner">
+              <div 
+                className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-1000 ease-out"
+                style={{ width: `${milestoneProgress.percentage}%` }}
+              ></div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
