@@ -10,6 +10,7 @@ import {
   AlertIcon, 
   BookOpenIcon 
 } from '../../components/Icons';
+import BulkQuestionModal from '../../components/BulkQuestionModal';
 
 export default function CreateTest() {
   const navigate = useNavigate();
@@ -188,6 +189,31 @@ export default function CreateTest() {
       toast.error(err.response?.data?.error || 'Failed to create assessment');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const [showBulkModal, setShowBulkModal] = useState(false);
+
+  const targetCount = parseInt(formData.targetQuestionCount) || 45;
+  const remainingCount = targetCount - selectedQuestions.length;
+
+  const handleBulkQuestionsAdded = async (bulkResponse) => {
+    try {
+      const res = await api.get('/questions');
+      const updatedList = res.data || [];
+      setQuestions(updatedList);
+
+      // Automatically select the newly created questions into this assessment!
+      const currentIds = new Set(selectedQuestions);
+      const newlyCreated = updatedList
+        .filter((q) => !currentIds.has(q.id))
+        .slice(0, bulkResponse?.addedCount || 10);
+      
+      const newSelectedIds = Array.from(new Set([...selectedQuestions, ...newlyCreated.map((q) => q.id)]));
+      setSelectedQuestions(newSelectedIds);
+      toast.success(`Selected ${newlyCreated.length} newly added questions for this assessment!`);
+    } catch (err) {
+      console.error('Error refreshing questions after bulk import:', err);
     }
   };
 
@@ -419,6 +445,15 @@ export default function CreateTest() {
 
             {/* Quick Actions */}
             <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setShowBulkModal(true)}
+                className="bg-emerald-600 text-white hover:bg-emerald-700 text-xs font-semibold py-1.5 px-3 rounded-lg shadow-xs transition-colors flex items-center gap-1.5"
+                title="Paste multiple questions from ChatGPT, PDF, or textbook"
+              >
+                <span>📋 Bulk Paste Questions</span>
+              </button>
+
               <button
                 type="button"
                 onClick={() => handleQuickSelectUnused(targetCount)}
@@ -879,6 +914,16 @@ export default function CreateTest() {
           </div>
         </div>
       )}
+
+      {/* Bulk Paste Questions Modal */}
+      <BulkQuestionModal
+        isOpen={showBulkModal}
+        onClose={() => setShowBulkModal(false)}
+        onQuestionsAdded={handleBulkQuestionsAdded}
+        existingQuestions={questions}
+        initialTopic={formData.topic || formData.subject || 'Quantitative Aptitude'}
+        isAssessmentMode={true}
+      />
     </div>
   );
 }
@@ -886,6 +931,14 @@ export default function CreateTest() {
 // Subcomponent for Question Card with usage badges
 function QuestionSelectionCard({ question: q, index, isSelected, onToggle }) {
   const [showUsageDetails, setShowUsageDetails] = useState(false);
+
+  if (!q) return null;
+
+  const topicName = q.topic || 'General';
+  const difficultyLevel = q.difficulty || 'MEDIUM';
+  const questionMarks = q.marks || 1;
+  const usageCount = q.usageCount || 0;
+  const testsList = Array.isArray(q.usedInTests) ? q.usedInTests : [];
 
   return (
     <div
@@ -900,13 +953,13 @@ function QuestionSelectionCard({ question: q, index, isSelected, onToggle }) {
         <div className="flex items-center gap-2 flex-wrap">
           <input
             type="checkbox"
-            checked={isSelected}
+            checked={Boolean(isSelected)}
             onChange={() => {}}
             className="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4 shrink-0"
           />
           {index && <span className="text-xs font-bold text-slate-700">#{index}</span>}
           <span className="text-[11px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
-            {q.topic}
+            {topicName}
           </span>
           {q.sourceExam && (
             <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
@@ -915,14 +968,14 @@ function QuestionSelectionCard({ question: q, index, isSelected, onToggle }) {
           )}
           <span
             className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-              q.difficulty === 'EASY'
+              difficultyLevel === 'EASY'
                 ? 'bg-emerald-50 text-emerald-700'
-                : q.difficulty === 'HARD'
+                : difficultyLevel === 'HARD'
                 ? 'bg-rose-50 text-rose-700'
                 : 'bg-amber-50 text-amber-700'
             }`}
           >
-            {q.difficulty}
+            {difficultyLevel}
           </span>
 
           {/* USAGE STATUS BADGE */}
@@ -939,25 +992,25 @@ function QuestionSelectionCard({ question: q, index, isSelected, onToggle }) {
               className="text-[10px] font-bold text-slate-700 bg-slate-200/80 hover:bg-slate-300 px-2 py-0.5 rounded-full flex items-center gap-1 transition-colors"
               title="Click to view tests that used this question"
             >
-              ↻ USED {q.usageCount} {q.usageCount === 1 ? 'TIME' : 'TIMES'}
+              ↻ USED {usageCount} {usageCount === 1 ? 'TIME' : 'TIMES'}
               {q.lastUsed && (
                 <span className="text-[10px] font-normal text-slate-600">
-                  (Last: {q.lastUsed.title})
+                  (Last: {q.lastUsed?.title || 'Prior Assessment'})
                 </span>
               )}
             </span>
           )}
         </div>
 
-        <span className="text-xs font-semibold text-slate-500 shrink-0">+{q.marks} mark</span>
+        <span className="text-xs font-semibold text-slate-500 shrink-0">+{questionMarks} mark</span>
       </div>
 
       <p className="text-xs font-medium text-slate-800 ml-6 line-clamp-2">
-        {q.questionText}
+        {q.questionText || ''}
       </p>
 
       {/* Expanded Usage History Details */}
-      {showUsageDetails && q.usedInTests && q.usedInTests.length > 0 && (
+      {showUsageDetails && testsList.length > 0 && (
         <div
           onClick={(e) => e.stopPropagation()}
           className="mt-2.5 ml-6 p-2.5 bg-slate-50 rounded-lg border border-slate-200 text-xs text-slate-700 space-y-1"
@@ -966,9 +1019,9 @@ function QuestionSelectionCard({ question: q, index, isSelected, onToggle }) {
             Assessment Usage History:
           </div>
           <ul className="list-disc list-inside space-y-0.5 text-[11px]">
-            {q.usedInTests.map((t) => (
-              <li key={t.id}>
-                <span className="font-semibold text-slate-800">{t.title}</span>
+            {testsList.map((t, tIdx) => (
+              <li key={t.id || tIdx}>
+                <span className="font-semibold text-slate-800">{t.title || 'Assessment'}</span>
                 {t.date && (
                   <span className="text-slate-400 ml-1">
                     ({new Date(t.date).toLocaleDateString()})
