@@ -156,7 +156,7 @@ export default function TestHistory() {
                           Details
                         </button>
                         <button
-                          onClick={() => window.location.href = `/take-test/${att.testId}`}
+                          onClick={() => navigate(`/take-test/${att.testId}?mode=retest`)}
                           className="text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-md transition-colors"
                         >
                           Retake

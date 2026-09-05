@@ -6,9 +6,11 @@ const prisma = new PrismaClient();
 
 router.use(authenticate);
 
-router.post('/', async (req, res) => {
+async function handleAttemptCreation(req, res) {
   try {
-    const { testId, isRetake } = req.body;
+    const { testId } = req.body;
+    const isRetake = Boolean(req.body.isRetake === true || req.body.isRetake === 'true');
+
     if (!testId) {
       return res.status(400).json({ error: 'Assessment ID is required' });
     }
@@ -48,7 +50,7 @@ router.post('/', async (req, res) => {
       orderBy: { createdAt: 'desc' }
     });
 
-    // 2. Prevent duplicate attempt creation on refresh if already submitted and not explicitly retaking
+    // 2. If NO in-progress attempt, and NOT explicitly retaking, check for existing COMPLETED attempt (for normal open / refresh / view result)
     if (!attempt && !isRetake) {
       const completedAttempt = await prisma.testAttempt.findFirst({
         where: { testId: test.id, studentId: req.user.id, status: 'COMPLETED' },
@@ -78,9 +80,9 @@ router.post('/', async (req, res) => {
       }
     }
 
-    // 3. If no in-progress attempt, create a new attempt
+    // 3. If no in-progress attempt (or isRetake is true and no in-progress attempt currently exists), create a brand new attempt
     if (!attempt) {
-      // Calculate attempt number
+      // Calculate attempt number (Attempt 1, Attempt 2, Attempt 3, etc.)
       const previousAttemptsCount = await prisma.testAttempt.count({
         where: { testId: test.id, studentId: req.user.id }
       });
@@ -91,13 +93,16 @@ router.post('/', async (req, res) => {
           studentId: req.user.id,
           testId: test.id,
           attemptNumber: nextAttemptNumber,
-          startedAt: new Date()
+          startedAt: new Date(),
+          status: 'IN_PROGRESS'
         }
       });
       
       const answerData = test.questions.map(q => ({
         attemptId: attempt.id,
-        questionId: q.id
+        questionId: q.id,
+        selectedAnswer: null,
+        isCorrect: false
       }));
       await prisma.studentAnswer.createMany({ data: answerData });
     }
@@ -122,7 +127,17 @@ router.post('/', async (req, res) => {
     console.error('Failed to start or resume attempt:', err);
     res.status(500).json({ error: 'Failed to start or resume attempt' });
   }
+}
+
+// POST /api/attempts - Starts or resumes an attempt
+router.post('/', handleAttemptCreation);
+
+// POST /api/attempts/retest - Explicit retest creation endpoint
+router.post('/retest', (req, res) => {
+  req.body.isRetake = true;
+  return handleAttemptCreation(req, res);
 });
+
 
 router.put('/:id/answer', async (req, res) => {
   try {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../api/axios';
@@ -10,6 +10,8 @@ export default function TakeTest() {
   const { testId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const isRetakeRequested = searchParams.get('mode') === 'retest' || searchParams.get('retest') === 'true';
 
   const [attemptId, setAttemptId] = useState(null);
   const [testTitle, setTestTitle] = useState('');
@@ -46,8 +48,16 @@ export default function TakeTest() {
         setIsTestNotFound(false);
         setTestError(null);
 
-        const res = await api.post('/attempts', { testId });
+        const res = await api.post('/attempts', { 
+          testId, 
+          isRetake: isRetakeRequested 
+        });
         const { attempt, answers: initialAnswers, isAlreadyCompleted } = res.data;
+
+        // Clean query string from URL once loaded so subsequent F5 refreshes resume cleanly
+        if (isRetakeRequested && !isAlreadyCompleted) {
+          navigate(`/take-test/${testId}`, { replace: true });
+        }
 
         // If the student already completed this test earlier and refreshed
         if (isAlreadyCompleted || attempt.status === 'COMPLETED') {
@@ -296,6 +306,54 @@ export default function TakeTest() {
       toast.error(err.response?.data?.error || 'Submission failed. Please try again.');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleStartRetest = async () => {
+    try {
+      setLoading(true);
+      setShowResults(false);
+      setScoreResult(null);
+      hasSubmittedRef.current = false;
+      isSubmittingRef.current = false;
+      setAnswers({});
+      setCurrentQIndex(0);
+
+      const res = await api.post('/attempts/retest', { testId });
+      const { attempt: newAttempt, answers: newAnswers } = res.data;
+
+      setAttemptId(newAttempt.id);
+      setTestTitle(newAttempt.test?.title || 'Aptitude Assessment');
+      sessionStorage.removeItem(`attempt_${newAttempt.id}_qIndex`);
+
+      const mappedQuestions = newAnswers.map((a) => ({
+        id: a.question.id,
+        questionText: a.question.questionText,
+        optionA: a.question.optionA,
+        optionB: a.question.optionB,
+        optionC: a.question.optionC,
+        optionD: a.question.optionD,
+        marks: a.question.marks,
+        negativeMarks: a.question.negativeMarks || 0,
+        topic: a.question.topic,
+        sourceExam: a.question.sourceExam
+      }));
+      setQuestions(mappedQuestions);
+
+      const durationMin = newAttempt.test?.duration || 45;
+      setTimeLeft(durationMin * 60);
+
+      if (socketRef.current) {
+        socketRef.current.emit('join-attempt', newAttempt.id);
+      }
+
+      toast.success(`Starting Attempt #${newAttempt.attemptNumber || 2}!`);
+    } catch (err) {
+      console.error('Failed to start retest:', err);
+      toast.error(err.response?.data?.error || 'Failed to start new attempt.');
+      setShowResults(true);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -691,16 +749,22 @@ export default function TakeTest() {
               </div>
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-2.5">
+              <button
+                onClick={handleStartRetest}
+                className="btn-primary flex-1 py-2.5 text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm"
+              >
+                <span>🔄 Retake Assessment</span>
+              </button>
               <button
                 onClick={() => navigate('/student/analytics')}
-                className="btn-primary flex-1 py-2.5 text-xs"
+                className="btn-secondary flex-1 py-2.5 text-xs font-semibold"
               >
-                View Performance Analysis
+                Performance Analysis
               </button>
               <button
                 onClick={() => navigate('/student')}
-                className="btn-secondary py-2.5 px-4 text-xs"
+                className="btn-secondary py-2.5 px-3 text-xs font-semibold"
               >
                 Dashboard
               </button>

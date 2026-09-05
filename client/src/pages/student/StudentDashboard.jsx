@@ -235,14 +235,14 @@ export default function StudentDashboard() {
 
                     {hasCompleted ? (
                       <button
-                        onClick={() => navigate(`/take-test/${test.id}`)}
+                        onClick={() => navigate(`/take-test/${test.id}${hasCompleted ? '?mode=retest' : ''}`)}
                         className="btn-secondary text-xs py-2 px-3.5 font-semibold text-blue-700 border-blue-200 hover:bg-blue-50"
                       >
                         🔄 Retake Test
                       </button>
                     ) : (
                       <button
-                        onClick={() => navigate(`/take-test/${test.id}`)}
+                        onClick={() => navigate(`/take-test/${test.id}${hasCompleted ? '?mode=retest' : ''}`)}
                         className="btn-primary text-xs py-2 px-4"
                       >
                         Start Test
@@ -376,7 +376,7 @@ export default function StudentDashboard() {
                     </td>
                     <td className="py-3 px-4 text-right">
                       <button
-                        onClick={() => navigate(`/take-test/${res.testId}`)}
+                        onClick={() => navigate(`/take-test/${res.testId}?mode=retest`)}
                         className="text-xs text-blue-600 hover:text-blue-800 font-semibold"
                       >
                         Retake →
