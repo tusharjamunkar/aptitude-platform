@@ -1,32 +1,35 @@
-export default function StatCard({ title, value, icon, gradient, subtitle, trend }) {
-  // gradient: 'blue' | 'green' | 'purple' | 'orange'
-  const gradients = {
-    blue: 'from-blue-500 to-blue-700',
-    green: 'from-emerald-500 to-green-700',
-    purple: 'from-purple-500 to-indigo-700',
-    orange: 'from-orange-400 to-red-500',
-    indigo: 'from-indigo-500 to-purple-700',
-    pink: 'from-pink-500 to-rose-600',
+import React from 'react';
+
+export default function StatCard({ title, value, icon, subtitle, trend, variant = 'primary' }) {
+  const iconVariants = {
+    primary: 'bg-blue-50 text-blue-600 border-blue-100',
+    success: 'bg-emerald-50 text-emerald-600 border-emerald-100',
+    warning: 'bg-amber-50 text-amber-600 border-amber-100',
+    purple: 'bg-indigo-50 text-indigo-600 border-indigo-100',
+    danger: 'bg-rose-50 text-rose-600 border-rose-100'
   };
+
+  const currentIconStyle = iconVariants[variant] || iconVariants.primary;
+
   return (
-    <div className={`bg-gradient-to-br ${gradients[gradient] || gradients.blue} rounded-2xl p-6 text-white shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300`}>
-      <div className="flex items-center justify-between mb-4">
-        <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center text-2xl backdrop-blur-sm border border-white/10 shadow-inner">
+    <div className="bg-white rounded-xl border border-slate-200/80 p-5 shadow-sm hover:border-slate-300 transition-all duration-150">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{title}</span>
+        <div className={`w-9 h-9 rounded-lg flex items-center justify-center border text-base ${currentIconStyle}`}>
           {icon}
         </div>
+      </div>
+      <div className="flex items-baseline gap-2">
+        <span className="text-2xl font-bold text-slate-900 tracking-tight">{value}</span>
         {trend && (
-          <span className="text-xs bg-white/20 px-2.5 py-1 rounded-full font-bold border border-white/10 flex items-center gap-1 shadow-sm">
+          <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
             {trend}
           </span>
         )}
       </div>
-      <div>
-        <h4 className="text-white/80 font-semibold text-sm uppercase tracking-wider mb-1">{title}</h4>
-        <div className="flex items-baseline gap-2">
-          <h2 className="text-4xl font-black tracking-tight">{value}</h2>
-          {subtitle && <p className="text-white/70 text-xs font-medium">{subtitle}</p>}
-        </div>
-      </div>
+      {subtitle && (
+        <p className="text-xs text-slate-500 mt-1">{subtitle}</p>
+      )}
     </div>
   );
 }

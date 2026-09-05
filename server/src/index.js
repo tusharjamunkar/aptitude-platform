@@ -126,8 +126,11 @@ async function seedMilestones() {
   }
 }
 
+const { seedDefaultData } = require('./services/seedData');
+
 const PORT = process.env.PORT || 5000;
 httpServer.listen(PORT, async () => {
   console.log(`🚀 Server running on port ${PORT}`);
   await seedMilestones();
+  await seedDefaultData(prisma);
 });

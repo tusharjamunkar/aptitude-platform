@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
+import { AcademicCapIcon, ShieldCheckIcon, CheckCircleIcon } from '../../components/Icons';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -14,129 +15,159 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!email.trim() || !password) {
+      setError('Please enter both email and password.');
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
-      const response = await api.post('/auth/login', { email, password });
+      const response = await api.post('/auth/login', { email: email.trim(), password });
       login(response.data.token, response.data.user);
-      toast.success('Logged in successfully! 🎉');
+      toast.success(`Welcome back, ${response.data.user.name}!`);
+      
       if (response.data.user.role?.toUpperCase() === 'TEACHER') {
         navigate('/teacher');
       } else {
         navigate('/student');
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed. Please try again.');
-      toast.error('Login failed 😢');
+      const msg = err.response?.data?.error || err.response?.data?.message || 'Invalid credentials. Please verify your email and password.';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row overflow-hidden bg-white">
-      {/* Left Half - Gradient Banner */}
-      <div className="md:w-1/2 bg-gradient-to-br from-indigo-800 via-purple-800 to-slate-900 text-white p-12 flex flex-col justify-center relative overflow-hidden hidden md:flex">
-        {/* Decorative elements */}
-        <div className="absolute top-10 left-10 w-32 h-32 bg-white rounded-full opacity-10 blur-2xl mix-blend-screen"></div>
-        <div className="absolute bottom-10 right-10 w-64 h-64 bg-indigo-500 rounded-full opacity-20 blur-3xl mix-blend-screen"></div>
-        <div className="absolute top-1/2 left-1/4 w-48 h-48 bg-purple-500 rounded-full opacity-20 blur-2xl mix-blend-screen"></div>
+    <div className="min-h-screen flex bg-slate-50">
+      {/* Left Branding Side (Desktop) */}
+      <div className="hidden lg:flex lg:w-1/2 bg-slate-900 text-white flex-col justify-between p-12 relative overflow-hidden border-r border-slate-800">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow">
+            <AcademicCapIcon className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold tracking-tight text-white">AptitudeTest Pro</h1>
+            <p className="text-xs text-slate-400 font-medium">Institution Assessment Platform</p>
+          </div>
+        </div>
 
-        <div className="relative z-10 max-w-md mx-auto">
-          <div className="text-6xl mb-6">🎓</div>
-          <h1 className="text-4xl font-black tracking-tight mb-4 text-transparent bg-clip-text bg-gradient-to-r from-white to-indigo-200">
-            AptitudeTest Pro
-          </h1>
-          <p className="text-xl text-indigo-100 font-medium mb-12">
-            Master aptitude. Ace every exam.
+        <div className="max-w-md my-auto">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20 mb-6">
+            <ShieldCheckIcon className="w-4 h-4" />
+            <span>Secure Campus Assessment Suite</span>
+          </div>
+          <h2 className="text-3xl font-extrabold text-white tracking-tight leading-tight mb-4">
+            Master Campus Placements & Competitive Exams
+          </h2>
+          <p className="text-sm text-slate-300 leading-relaxed mb-8">
+            Access previous-year question assessments with active proctoring, topic mastery analytics, and curated learning recommendations.
           </p>
-          <ul className="space-y-6 text-indigo-50/90 font-medium text-lg">
-            <li className="flex items-center gap-4 bg-white/5 p-4 rounded-xl border border-white/10 backdrop-blur-sm">
-              <span className="text-2xl">✅</span> 500+ students supported
-            </li>
-            <li className="flex items-center gap-4 bg-white/5 p-4 rounded-xl border border-white/10 backdrop-blur-sm">
-              <span className="text-2xl">🛡️</span> Anti-cheat protection
-            </li>
-            <li className="flex items-center gap-4 bg-white/5 p-4 rounded-xl border border-white/10 backdrop-blur-sm">
-              <span className="text-2xl">📊</span> AI-powered analytics
-            </li>
-          </ul>
+
+          <div className="space-y-3.5 border-t border-slate-800 pt-6">
+            <div className="flex items-center gap-3 text-xs text-slate-300 font-medium">
+              <CheckCircleIcon className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>45 Authentic Previous-Year Questions (TCS, Infosys, Wipro, GATE)</span>
+            </div>
+            <div className="flex items-center gap-3 text-xs text-slate-300 font-medium">
+              <CheckCircleIcon className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>Real-Time Tab Switch & Anti-Cheating Protection</span>
+            </div>
+            <div className="flex items-center gap-3 text-xs text-slate-300 font-medium">
+              <CheckCircleIcon className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>Instant Weak-Area Analysis & Verified Video Solutions</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="text-xs text-slate-400">
+          © {new Date().getFullYear()} AptitudeTest Pro. Designed for Academic & Placement Excellence.
         </div>
       </div>
 
-      {/* Right Half - Form */}
-      <div className="w-full md:w-1/2 flex items-center justify-center p-8 bg-slate-50">
-        <div className="w-full max-w-md bg-white p-8 rounded-3xl shadow-xl border border-slate-100">
-          <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold text-slate-800 mb-2">Welcome back 👋</h2>
-            <p className="text-slate-500 font-medium">Sign in to your account</p>
+      {/* Right Form Side */}
+      <div className="flex-1 flex items-center justify-center p-6 sm:p-12">
+        <div className="w-full max-w-md bg-white rounded-2xl border border-slate-200 shadow-sm p-8">
+          <div className="text-center mb-6">
+            <div className="lg:hidden inline-flex w-12 h-12 rounded-xl bg-blue-600 items-center justify-center text-white mb-3 shadow">
+              <AcademicCapIcon className="w-6 h-6" />
+            </div>
+            <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Sign in to your account</h2>
+            <p className="text-xs text-slate-500 mt-1">Enter your institutional credentials to continue</p>
           </div>
 
           {error && (
-            <div className="bg-red-50 text-red-600 p-4 rounded-xl mb-6 text-sm font-medium flex items-center gap-2 border border-red-100">
-              <span className="text-lg">⚠️</span> {error}
+            <div className="mb-5 p-3.5 rounded-lg bg-red-50 border border-red-200 text-xs font-medium text-red-700 flex items-start gap-2.5">
+              <span className="font-bold shrink-0">Error:</span>
+              <span>{error}</span>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
-                <span>✉️</span> Email Address
-              </label>
+              <label className="label-text">Institutional Email</label>
               <input
                 type="email"
                 required
-                className="input-field shadow-sm hover:border-indigo-300 focus:ring-4 focus:ring-indigo-100 transition-all"
-                placeholder="you@example.com"
+                className="input-field"
+                placeholder="student@university.edu"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
-                <span>🔒</span> Password
-              </label>
-              <input
-                type="password"
-                required
-                className="input-field shadow-sm hover:border-indigo-300 focus:ring-4 focus:ring-indigo-100 transition-all"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="email"
               />
             </div>
 
-            <div className="flex items-center justify-between text-sm">
-              <label className="flex items-center text-slate-600 font-medium cursor-pointer">
-                <input type="checkbox" className="mr-2 rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4" />
-                Remember me
-              </label>
-              <a href="#" className="text-indigo-600 font-bold hover:text-indigo-800 transition-colors">Forgot password?</a>
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-sm font-medium text-slate-700">Password</label>
+              </div>
+              <input
+                type="password"
+                required
+                className="input-field"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+              />
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="btn-primary w-full py-4 text-lg mt-4 flex items-center justify-center gap-2"
+              className="btn-primary w-full py-2.5 mt-2"
             >
               {loading ? (
-                <>
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                  Signing in...
-                </>
+                <span className="flex items-center gap-2">
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                  <span>Signing in...</span>
+                </span>
               ) : (
-                'Sign In 🚀'
+                <span>Sign In</span>
               )}
             </button>
           </form>
 
-          <p className="mt-8 text-center text-slate-500 font-medium">
-            Don't have an account?{' '}
-            <Link to="/register" className="text-indigo-600 font-bold hover:text-indigo-800 transition-colors">
-              Register here ✨
-            </Link>
-          </p>
+          <div className="mt-6 pt-6 border-t border-slate-100 text-center">
+            <p className="text-xs text-slate-500">
+              New student or faculty member?{' '}
+              <Link to="/register" className="font-semibold text-blue-600 hover:text-blue-700 transition-colors">
+                Create an account
+              </Link>
+            </p>
+          </div>
+
+          {/* Quick Demo Credentials Info for Testing */}
+          <div className="mt-6 p-3.5 rounded-lg bg-slate-50 border border-slate-200/80 text-[11px] text-slate-600">
+            <span className="font-semibold text-slate-800 block mb-1">Faculty Account Credentials:</span>
+            <div className="font-mono text-slate-700 space-y-0.5">
+              <div>Email: <span className="text-blue-700 font-semibold">teacher@aptitude.com</span></div>
+              <div>Password: <span className="text-blue-700 font-semibold">Teacher@12345</span></div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -1,107 +1,192 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import api from '../../api/axios';
 import StatCard from '../../components/StatCard';
+import { CheckCircleIcon, UserIcon, TrophyIcon, AlertIcon } from '../../components/Icons';
 
 export default function TestResults() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [results, setResults] = useState([]);
+  const [testInfo, setTestInfo] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [results, setResults] = useState(null);
 
   useEffect(() => {
-    setTimeout(() => {
-      setResults({
-        testName: 'Midterm Aptitude Check',
-        topic: 'Mixed Topics',
-        stats: { totalAttempts: 145, avgScore: 68, passRate: 75, disqualified: 3 },
-        students: [
-          { rank: 1, name: 'Alex Johnson', score: 98, time: '38m', status: 'Passed' },
-          { rank: 2, name: 'Sarah Williams', score: 95, time: '41m', status: 'Passed' },
-          { rank: 3, name: 'Michael Chen', score: 92, time: '44m', status: 'Passed' },
-          { rank: 4, name: 'Emily Davis', score: 88, time: '40m', status: 'Passed' },
-          { rank: 120, name: 'John Doe', score: 45, time: '45m', status: 'Failed' },
-        ]
-      });
-      setLoading(false);
-    }, 600);
+    fetchResults();
   }, [id]);
 
-  if (loading) return <div className="flex justify-center p-20"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"></div></div>;
+  const fetchResults = async () => {
+    try {
+      setLoading(true);
+      const [resAttempts, resTests] = await Promise.all([
+        api.get(`/tests/${id}/results`),
+        api.get('/tests')
+      ]);
 
-  const getRankBadge = (rank) => {
-    if (rank === 1) return <span className="text-2xl drop-shadow-sm" title="First Place">🥇</span>;
-    if (rank === 2) return <span className="text-2xl drop-shadow-sm" title="Second Place">🥈</span>;
-    if (rank === 3) return <span className="text-2xl drop-shadow-sm" title="Third Place">🥉</span>;
-    return <span className="text-sm font-bold text-slate-500 bg-slate-100 w-8 h-8 rounded-full flex items-center justify-center border border-slate-200">#{rank}</span>;
+      const attemptList = resAttempts.data || [];
+      setResults(attemptList);
+
+      const currentTest = (resTests.data || []).find((t) => t.id === id);
+      setTestInfo(currentTest || { title: 'Assessment Results' });
+    } catch (err) {
+      console.error('Error fetching test results:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
+  const totalCandidates = results.length;
+  const completedAttempts = results.filter((r) => r.status === 'COMPLETED');
+  const avgScore = completedAttempts.length > 0
+    ? Math.round(
+        completedAttempts.reduce(
+          (acc, r) => acc + (r.totalMarks > 0 ? (r.score / r.totalMarks) * 100 : 0),
+          0
+        ) / completedAttempts.length
+      )
+    : 0;
+
+  const highestScore = completedAttempts.length > 0
+    ? Math.max(...completedAttempts.map((r) => r.score))
+    : 0;
+
+  const disqualifiedCount = results.filter((r) => r.status === 'DISQUALIFIED').length;
+
   return (
-    <div className="space-y-8 pb-12">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <button onClick={() => navigate('/teacher')} className="p-2 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-500 hover:text-indigo-600 hover:border-indigo-200 transition-colors">
-          ←
-        </button>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-black text-slate-800">{results.testName}</h1>
-          <p className="text-slate-500 font-medium">Results and Analysis • {results.topic}</p>
-        </div>
-      </div>
-
-      {/* Stats Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard title="Total Attempts" value={results.stats.totalAttempts} icon="👨🎓" gradient="blue" />
-        <StatCard title="Average Score" value={`${results.stats.avgScore}%`} icon="📊" gradient="purple" />
-        <StatCard title="Pass Rate" value={`${results.stats.passRate}%`} icon="✅" gradient="green" />
-        <StatCard title="Disqualified" value={results.stats.disqualified} icon="⚠️" gradient="orange" />
-      </div>
-
-      {/* Leaderboard */}
-      <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-        <div className="p-6 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
-          <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">🏆 Class Leaderboard</h2>
-          <button className="btn-secondary py-1.5 text-sm flex items-center gap-2">
-            <span>📥</span> Export CSV
+          <button
+            onClick={() => navigate('/teacher')}
+            className="text-xs font-semibold text-blue-600 hover:text-blue-700 mb-1 flex items-center gap-1"
+          >
+            ← Back to Dashboard
           </button>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+            {testInfo?.title || 'Assessment Results'}
+          </h1>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Cohort examination score records, roll numbers, and submission log
+          </p>
         </div>
-        
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="text-xs uppercase font-bold text-slate-400 border-b border-slate-100">
-                <th className="py-4 pl-6 w-16">Rank</th>
-                <th className="py-4">Student Name</th>
-                <th className="py-4 w-64">Score Bar</th>
-                <th className="py-4 text-center">Score</th>
-                <th className="py-4 text-center">Time</th>
-                <th className="py-4 pr-6 text-right">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {results.students.map((student, i) => (
-                <tr key={i} className={`hover:bg-slate-50/50 transition-colors ${i < 3 ? 'bg-amber-50/30' : ''}`}>
-                  <td className="py-4 pl-6">{getRankBadge(student.rank)}</td>
-                  <td className="py-4 font-bold text-slate-700">{student.name}</td>
-                  <td className="py-4 pr-4">
-                    <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                      <div 
-                        className={`h-full rounded-full ${student.score >= 80 ? 'bg-emerald-500' : student.score >= 60 ? 'bg-amber-400' : 'bg-red-400'}`}
-                        style={{ width: `${student.score}%` }}
-                      ></div>
-                    </div>
-                  </td>
-                  <td className="py-4 text-center font-black text-slate-800">{student.score}%</td>
-                  <td className="py-4 text-center text-sm font-medium text-slate-500">{student.time}</td>
-                  <td className="py-4 pr-6 text-right">
-                    <span className={`inline-block px-3 py-1 rounded-md text-xs font-bold border ${student.status === 'Passed' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-red-50 text-red-600 border-red-200'}`}>
-                      {student.status}
-                    </span>
-                  </td>
+      </div>
+
+      {/* Cohort Metrics */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          title="Candidates Attempted"
+          value={totalCandidates}
+          icon={<UserIcon />}
+          subtitle="Submissions received"
+          variant="primary"
+        />
+        <StatCard
+          title="Cohort Average"
+          value={`${avgScore}%`}
+          icon={<CheckCircleIcon />}
+          subtitle="Completed exam average"
+          variant="success"
+        />
+        <StatCard
+          title="Highest Score"
+          value={highestScore}
+          icon={<TrophyIcon />}
+          subtitle="Top mark attained"
+          variant="warning"
+        />
+        <StatCard
+          title="Disqualified"
+          value={disqualifiedCount}
+          icon={<AlertIcon />}
+          subtitle="Tab-switching violations"
+          variant="danger"
+        />
+      </div>
+
+      {/* Student Submissions Table */}
+      <div className="card p-0 overflow-hidden">
+        <div className="p-5 border-b border-slate-200">
+          <h2 className="text-sm font-bold text-slate-900">Student Examination Ledger</h2>
+          <p className="text-xs text-slate-500">Official evaluation records sorted by rank</p>
+        </div>
+
+        {loading ? (
+          <div className="p-12 text-center">
+            <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+            <p className="text-xs text-slate-500">Loading student scores...</p>
+          </div>
+        ) : results.length === 0 ? (
+          <div className="p-12 text-center text-xs text-slate-500">
+            No candidates have submitted this assessment yet.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 text-slate-600 uppercase tracking-wider font-semibold border-b border-slate-200">
+                <tr>
+                  <th className="py-3 px-4">Rank</th>
+                  <th className="py-3 px-4">Student Name</th>
+                  <th className="py-3 px-4">Roll Number</th>
+                  <th className="py-3 px-4">Department & Year</th>
+                  <th className="py-3 px-4">Score</th>
+                  <th className="py-3 px-4">Percentage</th>
+                  <th className="py-3 px-4">Violations</th>
+                  <th className="py-3 px-4">Status</th>
+                  <th className="py-3 px-4">Submitted At</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                {results.map((att, idx) => {
+                  const pct = att.totalMarks > 0 ? Math.round((att.score / att.totalMarks) * 100) : 0;
+                  return (
+                    <tr key={att.id} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="py-3.5 px-4 font-bold text-slate-400">
+                        #{idx + 1}
+                      </td>
+                      <td className="py-3.5 px-4 font-bold text-slate-900">
+                        {att.student?.name || 'Candidate'}
+                      </td>
+                      <td className="py-3.5 px-4 font-mono font-semibold text-slate-700">
+                        {att.student?.rollNumber || 'N/A'}
+                      </td>
+                      <td className="py-3.5 px-4 text-slate-500">
+                        {att.student?.department || 'Engineering'} {att.student?.studyYear ? `(${att.student.studyYear})` : ''}
+                      </td>
+                      <td className="py-3.5 px-4 font-bold text-slate-900">
+                        {att.score} / {att.totalMarks}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span className={`font-bold ${pct >= 60 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                          {pct}%
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span className={`font-semibold ${att.tabSwitchCount > 0 ? 'text-rose-600' : 'text-slate-400'}`}>
+                          {att.tabSwitchCount} tab switch{att.tabSwitchCount !== 1 ? 'es' : ''}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span
+                          className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${
+                            att.status === 'COMPLETED'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : 'bg-rose-50 text-rose-700 border-rose-200'
+                          }`}
+                        >
+                          {att.status}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 text-slate-500">
+                        {att.submittedAt ? new Date(att.submittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,105 +1,289 @@
 import React, { useState, useEffect } from 'react';
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  Radar
+} from 'recharts';
+import api from '../../api/axios';
 import StatCard from '../../components/StatCard';
-import YouTubeCard from '../../components/YouTubeCard';
 import TopicBadge from '../../components/TopicBadge';
+import YouTubeCard from '../../components/YouTubeCard';
+import { ChartIcon, TrophyIcon, CheckCircleIcon, BookOpenIcon, AlertIcon } from '../../components/Icons';
 
 export default function StudentAnalytics() {
-  const [loading, setLoading] = useState(true);
   const [analytics, setAnalytics] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [weakTopicVideos, setWeakTopicVideos] = useState({});
+  const [weakTopicTips, setWeakTopicTips] = useState({});
 
   useEffect(() => {
-    // Mock data
-    setTimeout(() => {
-      setAnalytics({
-        overallScore: 78,
-        testsDone: 15,
-        bestScore: 95,
-        topicsMastered: 4,
-        topicPerformance: [
-          { topic: 'Number System', avg: 85, trend: '+5%' },
-          { topic: 'Percentages', avg: 92, trend: '+12%' },
-          { topic: 'Logical Reasoning', avg: 65, trend: '-2%' },
-          { topic: 'Data Interpretation', avg: 58, trend: '+1%' },
-          { topic: 'Time Speed Distance', avg: 45, trend: '-8%' },
-        ],
-        weakTopics: [
-          {
-            name: 'Time Speed Distance',
-            score: 45,
-            tips: ['Focus on relative speed concepts', 'Practice conversions between km/hr and m/s', 'Draw diagrams for train problems'],
-            videos: [
-              { id: '1', title: 'Time Speed Distance Masterclass', channel: 'Aptitude Ninja', duration: '45:20', views: '1.2M', thumb: 'https://images.unsplash.com/photo-1616423640778-28d1b53229bd?w=500&q=80' },
-              { id: '2', title: 'Relative Speed Shortcuts', channel: 'Math Tricks', duration: '12:05', views: '450K', thumb: 'https://images.unsplash.com/photo-1509228468518-180dd4864904?w=500&q=80' }
-            ]
-          },
-          {
-            name: 'Data Interpretation',
-            score: 58,
-            tips: ['Improve fast calculation techniques', 'Learn to approximate percentages quickly'],
-            videos: [
-              { id: '3', title: 'Pie Charts Explained', channel: 'Data Mastery', duration: '20:15', views: '800K', thumb: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=500&q=80' }
-            ]
-          }
-        ]
-      });
-      setLoading(false);
-    }, 800);
+    fetchAnalytics();
   }, []);
 
+  const fetchAnalytics = async () => {
+    try {
+      setLoading(true);
+      const res = await api.get('/analytics/student');
+      const data = res.data || {};
+      setAnalytics(data);
+
+      // If there are weak topics, fetch verified YouTube tutorials for each
+      const weakList = data.weakTopics || [];
+      const topicsToFetch = weakList.length > 0 ? weakList.slice(0, 3) : ['Number System', 'Percentages'];
+      
+      for (const topic of topicsToFetch) {
+        try {
+          const ytRes = await api.get(`/youtube/${encodeURIComponent(topic)}`);
+          if (ytRes.data) {
+            setWeakTopicVideos((prev) => ({ ...prev, [topic]: ytRes.data.videos || [] }));
+            setWeakTopicTips((prev) => ({ ...prev, [topic]: ytRes.data.studyTips || [] }));
+          }
+        } catch (e) {
+          console.error('Error fetching videos for', topic, e);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching student analytics:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (loading) {
-    return <div className="flex justify-center items-center h-64"><div className="animate-spin rounded-full h-12 w-12 border-b-4 border-indigo-600"></div></div>;
+    return (
+      <div className="card p-12 text-center">
+        <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+        <p className="text-xs text-slate-500">Compiling performance analytics...</p>
+      </div>
+    );
   }
 
+  const topicData = (analytics?.topicPerformance || []).map((t) => ({
+    topic: t.topic,
+    score: Math.round(t.avgPercentage || 0)
+  }));
+
+  const trendData = (analytics?.testHistory || []).map((t, idx) => ({
+    name: `Test ${idx + 1}`,
+    score: t.percentage || 0
+  })).reverse();
+
+  const weakTopics = analytics?.weakTopics || [];
+  const strongTopics = analytics?.strongTopics || [];
+
   return (
-    <div className="space-y-8 pb-12">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-slate-100">
+    <div className="space-y-6">
+      {/* Page Header */}
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-black text-slate-800 mb-2 flex items-center gap-3">
-            📊 My Performance
-          </h1>
-          <p className="text-slate-500 font-medium">Detailed breakdown of your aptitude journey</p>
-        </div>
-        <div className="flex items-center gap-4 bg-indigo-50 px-6 py-4 rounded-2xl border border-indigo-100">
-          <div className="text-slate-600 font-bold text-sm uppercase tracking-wider">Overall Score</div>
-          <div className="text-4xl font-black text-indigo-700">{analytics.overallScore}%</div>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Performance Analytics</h1>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Detailed breakdown of your strengths, weak areas, and recommended video study materials
+          </p>
         </div>
       </div>
 
-      {/* Stats Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard title="Tests Taken" value={analytics.testsDone} icon="📝" gradient="blue" />
-        <StatCard title="Best Score" value={`${analytics.bestScore}%`} icon="🌟" gradient="green" />
-        <StatCard title="Topics Mastered" value={analytics.topicsMastered} icon="🎓" gradient="purple" subtitle="Score > 80%" />
-        <StatCard title="Needs Work" value={analytics.weakTopics.length} icon="🎯" gradient="orange" subtitle="Score < 60%" />
+      {/* Metrics Row */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          title="Average Score"
+          value={`${Math.round(analytics?.averageScore || 0)}%`}
+          icon={<CheckCircleIcon />}
+          subtitle="Cumulative assessment score"
+          variant="primary"
+        />
+        <StatCard
+          title="Tests Completed"
+          value={analytics?.totalCompleted || 0}
+          icon={<BookOpenIcon />}
+          subtitle="Evaluated submissions"
+          variant="success"
+        />
+        <StatCard
+          title="Topics Mastered"
+          value={strongTopics.length}
+          icon={<TrophyIcon />}
+          subtitle="Score ≥ 80% accuracy"
+          variant="warning"
+        />
+        <StatCard
+          title="Focus Areas"
+          value={weakTopics.length}
+          icon={<AlertIcon />}
+          subtitle="Score < 60% threshold"
+          variant="danger"
+        />
       </div>
 
-      {/* Topics Breakdown */}
-      <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-        <div className="p-6 border-b border-slate-100 bg-slate-50">
-          <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">🔍 Topic Breakdown</h2>
+      {/* Charts Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Score Progression Trend */}
+        <div className="card">
+          <h3 className="text-sm font-bold text-slate-900 mb-1">Score Progression Over Time</h3>
+          <p className="text-xs text-slate-500 mb-4">Percentage score across sequential tests</p>
+
+          <div className="h-64">
+            {trendData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={trendData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <XAxis dataKey="name" stroke="#94a3b8" fontSize={11} tickLine={false} />
+                  <YAxis domain={[0, 100]} stroke="#94a3b8" fontSize={11} tickLine={false} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#ffffff',
+                      borderColor: '#e2e8f0',
+                      borderRadius: '0.5rem',
+                      fontSize: '12px'
+                    }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="score"
+                    name="Score %"
+                    stroke="#2563eb"
+                    strokeWidth={2}
+                    dot={{ fill: '#2563eb', r: 4 }}
+                    activeDot={{ r: 6 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-xs text-slate-400">
+                Complete more tests to visualize progression trends.
+              </div>
+            )}
+          </div>
         </div>
-        <div className="p-6">
+
+        {/* Topic Mastery Radar */}
+        <div className="card">
+          <h3 className="text-sm font-bold text-slate-900 mb-1">Topic Proficiency Radar</h3>
+          <p className="text-xs text-slate-500 mb-4">Relative accuracy distribution by syllabus topic</p>
+
+          <div className="h-64">
+            {topicData.length > 2 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <RadarChart data={topicData}>
+                  <PolarGrid stroke="#e2e8f0" />
+                  <PolarAngleAxis dataKey="topic" stroke="#64748b" fontSize={10} />
+                  <PolarRadiusAxis domain={[0, 100]} stroke="#cbd5e1" fontSize={9} />
+                  <Radar
+                    name="Proficiency %"
+                    dataKey="score"
+                    stroke="#2563eb"
+                    fill="#3b82f6"
+                    fillOpacity={0.4}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#ffffff',
+                      borderColor: '#e2e8f0',
+                      borderRadius: '0.5rem',
+                      fontSize: '12px'
+                    }}
+                  />
+                </RadarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-xs text-slate-400">
+                Take tests spanning multiple topics to view radar analysis.
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Weak Areas & Curated YouTube Video Lessons */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <div className="w-2.5 h-2.5 rounded-full bg-rose-500"></div>
+          <h2 className="text-base font-bold text-slate-900 tracking-tight">
+            Recommended Video Tutorials & Study Tips
+          </h2>
+        </div>
+        <p className="text-xs text-slate-500">
+          Targeted lectures and shortcuts to strengthen performance in weak examination areas
+        </p>
+
+        {Object.keys(weakTopicVideos).length === 0 ? (
+          <div className="card p-8 text-center text-xs text-slate-500">
+            No critical weak topics detected. Great job!
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {Object.keys(weakTopicVideos).map((topic) => (
+              <div key={topic} className="card border-slate-200">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 mb-4 border-b border-slate-100">
+                  <div>
+                    <span className="text-xs font-bold text-rose-700 bg-rose-50 px-2.5 py-0.5 rounded-full border border-rose-200">
+                      Topic Improvement Required
+                    </span>
+                    <h3 className="text-lg font-bold text-slate-900 mt-1 capitalize">{topic}</h3>
+                  </div>
+
+                  {/* Study Tips Pills */}
+                  {weakTopicTips[topic] && weakTopicTips[topic].length > 0 && (
+                    <div className="text-xs text-slate-600 space-y-1">
+                      <span className="font-semibold text-slate-800 text-[11px] block">Key Shortcuts:</span>
+                      <ul className="list-disc list-inside text-[11px] text-slate-500 space-y-0.5">
+                        {weakTopicTips[topic].slice(0, 2).map((tip, idx) => (
+                          <li key={idx}>{tip}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+
+                {/* Verified YouTube Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {(weakTopicVideos[topic] || []).map((video) => (
+                    <YouTubeCard key={video.id} video={video} />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Comprehensive Topic Table */}
+      {analytics?.topicPerformance?.length > 0 && (
+        <div className="card">
+          <h3 className="text-sm font-bold text-slate-900 mb-1">Topic-Wise Performance Breakdown</h3>
+          <p className="text-xs text-slate-500 mb-4">Complete mastery audit across all attempted questions</p>
+
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="text-xs uppercase font-bold text-slate-400 border-b border-slate-100">
-                  <th className="pb-3 pl-2">Topic</th>
-                  <th className="pb-3">Average Score</th>
-                  <th className="pb-3">Performance</th>
-                  <th className="pb-3 text-right pr-2">Trend</th>
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 text-slate-600 uppercase tracking-wider font-semibold border-b border-slate-200">
+                <tr>
+                  <th className="py-2.5 px-4">Subject Topic</th>
+                  <th className="py-2.5 px-4">Questions Attempted</th>
+                  <th className="py-2.5 px-4">Correct Answers</th>
+                  <th className="py-2.5 px-4">Accuracy %</th>
+                  <th className="py-2.5 px-4">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
-                {analytics.topicPerformance.map((topic, i) => (
-                  <tr key={i} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="py-4 pl-2 font-bold text-slate-700">{topic.topic}</td>
-                    <td className="py-4 font-bold text-slate-800 text-lg">{topic.avg}%</td>
-                    <td className="py-4">
-                      <TopicBadge percentage={topic.avg} />
+              <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                {analytics.topicPerformance.map((t, i) => (
+                  <tr key={i} className="hover:bg-slate-50/70 transition-colors">
+                    <td className="py-3 px-4 font-semibold text-slate-900">{t.topic}</td>
+                    <td className="py-3 px-4">{t.totalQuestions}</td>
+                    <td className="py-3 px-4">{t.correctAnswers}</td>
+                    <td className="py-3 px-4 font-bold text-slate-900">
+                      {Math.round(t.avgPercentage)}%
                     </td>
-                    <td className={`py-4 pr-2 text-right font-bold ${topic.trend.startsWith('+') ? 'text-emerald-500' : 'text-red-500'}`}>
-                      {topic.trend}
+                    <td className="py-3 px-4">
+                      <TopicBadge topic={t.topic} percentage={Math.round(t.avgPercentage)} />
                     </td>
                   </tr>
                 ))}
@@ -107,62 +291,7 @@ export default function StudentAnalytics() {
             </table>
           </div>
         </div>
-      </div>
-
-      {/* Weak Topics Section - The most important part */}
-      <div className="space-y-6">
-        <h2 className="text-2xl font-black text-slate-800 flex items-center gap-3">
-          <span className="text-red-500">🎯</span> Improve These Topics
-        </h2>
-        
-        {analytics.weakTopics.map((topic, idx) => (
-          <div key={idx} className="bg-white rounded-3xl shadow-lg border border-slate-100 overflow-hidden">
-            {/* Topic Header */}
-            <div className="bg-gradient-to-r from-red-500 to-orange-500 p-6 md:p-8 flex flex-col md:flex-row justify-between items-center gap-4 text-white">
-              <div>
-                <div className="text-red-100 text-sm font-bold uppercase tracking-wider mb-1">Needs Attention</div>
-                <h3 className="text-2xl md:text-3xl font-black">{topic.name}</h3>
-              </div>
-              <div className="bg-white/20 backdrop-blur-md border border-white/20 px-6 py-3 rounded-2xl flex items-center gap-3">
-                <span className="text-red-100 font-medium">Current Avg:</span>
-                <span className="text-3xl font-black">{topic.score}%</span>
-              </div>
-            </div>
-
-            <div className="p-6 md:p-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Study Tips */}
-              <div className="lg:col-span-1">
-                <h4 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-                  <span>💡</span> What to focus on:
-                </h4>
-                <ul className="space-y-3">
-                  {topic.tips.map((tip, i) => (
-                    <li key={i} className="flex gap-3 text-slate-600 font-medium bg-slate-50 p-3 rounded-xl border border-slate-100">
-                      <span className="text-orange-500 mt-0.5">•</span>
-                      <span>{tip}</span>
-                    </li>
-                  ))}
-                </ul>
-                <button className="mt-6 w-full btn-secondary py-3 text-sm flex items-center justify-center gap-2">
-                  <span>📝</span> Take Practice Test
-                </button>
-              </div>
-
-              {/* Recommended Videos */}
-              <div className="lg:col-span-2">
-                <h4 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-                  <span>📺</span> Recommended Lessons
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {topic.videos.map(video => (
-                    <YouTubeCard key={video.id} video={video} />
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
+      )}
     </div>
   );
 }

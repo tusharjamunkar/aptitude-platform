@@ -1,23 +1,33 @@
 import React from 'react';
 
-export default function TopicBadge({ percentage }) {
-  if (percentage >= 80) {
+export default function TopicBadge({ topic, percentage }) {
+  if (percentage === undefined || percentage === null) {
     return (
-      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-gradient-to-r from-emerald-100 to-green-100 text-emerald-800 border border-emerald-200 shadow-sm">
-        <span className="text-emerald-500">💪</span> Strong
-      </span>
-    );
-  } else if (percentage >= 60) {
-    return (
-      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-800 border border-amber-200 shadow-sm">
-        <span className="text-amber-500">📈</span> Average
-      </span>
-    );
-  } else {
-    return (
-      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-gradient-to-r from-red-100 to-rose-100 text-red-800 border border-red-200 shadow-sm">
-        <span className="text-red-500">🔴</span> Needs Work
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
+        {topic}
       </span>
     );
   }
+
+  let badgeStyle = 'bg-slate-100 text-slate-700 border-slate-200';
+  let label = 'Average';
+
+  if (percentage >= 80) {
+    badgeStyle = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+    label = 'Strong';
+  } else if (percentage >= 60) {
+    badgeStyle = 'bg-blue-50 text-blue-700 border-blue-200';
+    label = 'Moderate';
+  } else {
+    badgeStyle = 'bg-rose-50 text-rose-700 border-rose-200';
+    label = 'Needs Focus';
+  }
+
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${badgeStyle}`}>
+      <span>{topic}</span>
+      <span className="font-bold opacity-80">· {percentage}%</span>
+      <span className="text-[10px] uppercase tracking-wider font-semibold opacity-75">({label})</span>
+    </span>
+  );
 }

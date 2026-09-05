@@ -1,279 +1,390 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { toast } from 'react-hot-toast';
-
-const TOPICS = [
-  "Mixed", "Number System", "Percentages", "Logical Reasoning", "Data Interpretation"
-];
+import api from '../../api/axios';
+import toast from 'react-hot-toast';
+import { CheckCircleIcon, ClockIcon } from '../../components/Icons';
 
 export default function CreateTest() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
+  const [questions, setQuestions] = useState([]);
+  const [selectedQuestions, setSelectedQuestions] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [availableQuestions, setAvailableQuestions] = useState([]);
-  
-  const [testData, setTestData] = useState({
+  const [submitting, setSubmitting] = useState(false);
+
+  const [formData, setFormData] = useState({
     title: '',
-    topic: 'Mixed',
+    subject: 'Quantitative & Logical Aptitude',
+    topic: 'Comprehensive Assessment',
     description: '',
-    duration: 45,
-    scheduledFor: '',
-    deadline: '',
-    isMandatory: false,
-    strictness: 'moderate', // low, moderate, high
-    selectedQuestions: []
+    duration: 45, // Exactly 45 minutes default
+    isMandatory: true,
+    warningsAllowed: 1
   });
 
   useEffect(() => {
-    if (step === 2 && availableQuestions.length === 0) {
-      // Mock fetching questions for step 2
-      setTimeout(() => {
-        setAvailableQuestions([
-          { _id: '1', text: 'If 20% of a = b, then b% of 20 is the same as:', topic: 'Percentages', difficulty: 'Medium', marks: 2 },
-          { _id: '2', text: 'A train running at 60 km/hr crosses a pole in 9s.', topic: 'Time Speed', difficulty: 'Easy', marks: 1 },
-          { _id: '3', text: 'Next number in series: 2, 6, 12, 20, ?', topic: 'Logical Reasoning', difficulty: 'Easy', marks: 1 },
-          { _id: '4', text: 'Find the odd one out: 3, 5, 11, 14, 17, 21', topic: 'Logical Reasoning', difficulty: 'Medium', marks: 2 },
-          { _id: '5', text: 'Data sufficiency: Is x > y?', topic: 'Data Interpretation', difficulty: 'Hard', marks: 3 },
-        ]);
-      }, 500);
-    }
-  }, [step]);
+    fetchQuestions();
+  }, []);
 
-  const toggleQuestionSelection = (question) => {
-    const isSelected = testData.selectedQuestions.some(q => q._id === question._id);
-    if (isSelected) {
-      setTestData({
-        ...testData,
-        selectedQuestions: testData.selectedQuestions.filter(q => q._id !== question._id)
-      });
-    } else {
-      setTestData({
-        ...testData,
-        selectedQuestions: [...testData.selectedQuestions, question]
-      });
-    }
-  };
-
-  const handleCreateTest = async () => {
-    setLoading(true);
-    // Mock API call
-    setTimeout(() => {
+  const fetchQuestions = async () => {
+    try {
+      setLoading(true);
+      const res = await api.get('/questions');
+      const list = res.data || [];
+      setQuestions(list);
+      // Pre-select all questions if 45 exist
+      if (list.length > 0 && selectedQuestions.length === 0) {
+        setSelectedQuestions(list.map((q) => q.id));
+      }
+    } catch (err) {
+      console.error('Error fetching questions for test creation:', err);
+    } finally {
       setLoading(false);
-      toast.success('Test created successfully! 🎉', { duration: 4000 });
-      navigate('/teacher');
-    }, 1500);
+    }
   };
 
-  const totalMarks = testData.selectedQuestions.reduce((sum, q) => sum + q.marks, 0);
+  const toggleSelectQuestion = (id) => {
+    setSelectedQuestions((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const selectAll = () => {
+    if (selectedQuestions.length === questions.length) {
+      setSelectedQuestions([]);
+    } else {
+      setSelectedQuestions(questions.map((q) => q.id));
+    }
+  };
+
+  const totalMarks = questions
+    .filter((q) => selectedQuestions.includes(q.id))
+    .reduce((acc, q) => acc + (q.marks || 1), 0);
+
+  const handleSubmit = async () => {
+    if (!formData.title.trim()) {
+      toast.error('Please specify a test title');
+      setStep(1);
+      return;
+    }
+    if (selectedQuestions.length === 0) {
+      toast.error('Please select at least one question for the test');
+      setStep(2);
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const payload = {
+        ...formData,
+        duration: parseInt(formData.duration) || 45,
+        questionIds: selectedQuestions
+      };
+      await api.post('/tests', payload);
+      toast.success('Assessment created and published successfully!');
+      navigate('/teacher');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to create assessment');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
-    <div className="max-w-4xl mx-auto pb-20">
-      <div className="mb-8">
-        <h1 className="text-3xl font-black text-slate-800 mb-2">Create New Test 🚀</h1>
-        <p className="text-slate-500 font-medium">Design an assessment in 3 easy steps</p>
+    <div className="max-w-4xl mx-auto space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Create Assessment</h1>
+        <p className="text-xs text-slate-500 mt-0.5">
+          Configure test parameters, select examination questions, and publish to students
+        </p>
       </div>
 
-      {/* Step Indicator */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 mb-8">
-        <div className="flex items-center justify-between max-w-2xl mx-auto relative">
-          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-slate-100 rounded-full -z-10"></div>
-          <div className="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-indigo-500 rounded-full -z-10 transition-all duration-500" style={{ width: step === 1 ? '0%' : step === 2 ? '50%' : '100%' }}></div>
-          
-          {[
-            { num: 1, label: 'Test Info' },
-            { num: 2, label: 'Questions' },
-            { num: 3, label: 'Review' }
-          ].map((s) => (
-            <div key={s.num} className="flex flex-col items-center gap-2 bg-white px-4">
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-colors border-2 ${step > s.num ? 'bg-emerald-500 border-emerald-500 text-white' : step === s.num ? 'bg-indigo-600 border-indigo-600 text-white ring-4 ring-indigo-100' : 'bg-white border-slate-200 text-slate-400'}`}>
-                {step > s.num ? '✓' : s.num}
-              </div>
-              <span className={`text-xs font-bold uppercase tracking-wider ${step >= s.num ? 'text-slate-800' : 'text-slate-400'}`}>{s.label}</span>
-            </div>
-          ))}
-        </div>
+      {/* Stepper Progress */}
+      <div className="grid grid-cols-3 gap-2 p-1 bg-slate-200/70 rounded-xl">
+        <button
+          type="button"
+          onClick={() => setStep(1)}
+          className={`py-2 px-3 rounded-lg text-xs font-semibold transition-all text-center ${
+            step === 1
+              ? 'bg-white text-blue-700 shadow-xs'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          1. Test Parameters
+        </button>
+        <button
+          type="button"
+          onClick={() => setStep(2)}
+          className={`py-2 px-3 rounded-lg text-xs font-semibold transition-all text-center ${
+            step === 2
+              ? 'bg-white text-blue-700 shadow-xs'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          2. Question Selection ({selectedQuestions.length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setStep(3)}
+          className={`py-2 px-3 rounded-lg text-xs font-semibold transition-all text-center ${
+            step === 3
+              ? 'bg-white text-blue-700 shadow-xs'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          3. Final Review & Publish
+        </button>
       </div>
 
-      {/* Step Content */}
-      <div className="bg-white rounded-3xl shadow-lg border border-slate-100 overflow-hidden">
-        
-        {/* STEP 1: Info */}
-        {step === 1 && (
-          <div className="p-8 space-y-6">
-            <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2"><span>📋</span> Basic Information</h2>
-            
+      {/* Step 1: Configuration */}
+      {step === 1 && (
+        <div className="card space-y-4">
+          <h2 className="text-sm font-bold text-slate-900 pb-2 border-b border-slate-100">
+            Assessment Details
+          </h2>
+
+          <div>
+            <label className="label-text">Assessment Title</label>
+            <input
+              type="text"
+              required
+              className="input-field"
+              placeholder="e.g. Previous Year Aptitude Assessment (45 Questions)"
+              value={formData.title}
+              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">Test Title <span className="text-red-500">*</span></label>
-              <input 
-                type="text" 
-                className="input-field text-lg font-bold" 
-                placeholder="e.g. Midterm Aptitude Assessment"
-                value={testData.title}
-                onChange={e => setTestData({...testData, title: e.target.value})}
+              <label className="label-text">Subject Discipline</label>
+              <input
+                type="text"
+                className="input-field"
+                value={formData.subject}
+                onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
               />
             </div>
+            <div>
+              <label className="label-text">Topic / Syllabus</label>
+              <input
+                type="text"
+                className="input-field"
+                value={formData.topic}
+                onChange={(e) => setFormData({ ...formData, topic: e.target.value })}
+              />
+            </div>
+          </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">Topic Focus</label>
-                <select 
-                  className="input-field"
-                  value={testData.topic}
-                  onChange={e => setTestData({...testData, topic: e.target.value})}
-                >
-                  {TOPICS.map(t => <option key={t} value={t}>{t}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2 flex justify-between">
-                  <span>Duration</span>
-                  <span className="text-indigo-600">{testData.duration} minutes</span>
-                </label>
-                <input 
-                  type="range" 
-                  min="10" max="180" step="5"
-                  className="w-full accent-indigo-600 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer mt-3"
-                  value={testData.duration}
-                  onChange={e => setTestData({...testData, duration: parseInt(e.target.value)})}
-                />
-                <div className="flex justify-between text-xs font-bold text-slate-400 mt-2">
-                  <span>10m</span>
-                  <span>180m</span>
-                </div>
-              </div>
+          <div>
+            <label className="label-text">Description & Instructions</label>
+            <textarea
+              rows={3}
+              className="input-field"
+              placeholder="Provide test instructions and proctoring requirements for candidates..."
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+            <div>
+              <label className="label-text flex items-center justify-between">
+                <span>Duration (Minutes)</span>
+                <span className="font-bold text-blue-600">{formData.duration} mins</span>
+              </label>
+              <input
+                type="number"
+                min="10"
+                max="180"
+                className="input-field"
+                value={formData.duration}
+                onChange={(e) => setFormData({ ...formData, duration: parseInt(e.target.value) || 45 })}
+              />
+              <p className="text-[11px] text-slate-400 mt-1">Standard placement assessment duration is 45 minutes.</p>
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">Instructions / Description</label>
-              <textarea 
-                rows="3" 
-                className="input-field resize-none"
-                placeholder="Enter instructions for students..."
-                value={testData.description}
-                onChange={e => setTestData({...testData, description: e.target.value})}
-              ></textarea>
+              <label className="label-text">Tab Switch Warnings</label>
+              <select
+                value={formData.warningsAllowed}
+                onChange={(e) => setFormData({ ...formData, warningsAllowed: parseInt(e.target.value) })}
+                className="select-field"
+              >
+                <option value={1}>1 Warning (Recommended for Campus Placements)</option>
+                <option value={0}>0 Warnings (Strict - Disqualify on 1st Violation)</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="pt-4 flex justify-end">
+            <button
+              type="button"
+              onClick={() => {
+                if (!formData.title.trim()) {
+                  toast.error('Please enter a test title');
+                  return;
+                }
+                setStep(2);
+              }}
+              className="btn-primary text-xs py-2 px-4"
+            >
+              Continue to Question Selection →
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Step 2: Select Questions */}
+      {step === 2 && (
+        <div className="space-y-4">
+          <div className="card p-4 flex items-center justify-between">
+            <div className="text-xs">
+              <span className="font-bold text-slate-900 text-sm">
+                {selectedQuestions.length} of {questions.length} questions selected
+              </span>
+              <span className="text-slate-500 ml-2">({totalMarks} Total Marks)</span>
             </div>
 
-            <div className="pt-6 border-t border-slate-100 flex justify-end">
-              <button 
-                onClick={() => setStep(2)} 
-                disabled={!testData.title}
-                className="btn-primary px-8 py-3 text-lg"
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={selectAll}
+                className="btn-secondary text-xs py-1.5 px-3"
               >
-                Next Step →
+                {selectedQuestions.length === questions.length ? 'Deselect All' : 'Select All 45'}
               </button>
             </div>
           </div>
-        )}
 
-        {/* STEP 2: Questions */}
-        {step === 2 && (
-          <div className="p-8 flex flex-col h-[600px]">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2"><span>🧩</span> Select Questions</h2>
-              <div className="relative">
-                <input type="text" placeholder="Search questions..." className="input-field py-2 pl-10 pr-4 text-sm w-64" />
-                <span className="absolute left-3 top-2.5 text-slate-400">🔍</span>
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
-              {availableQuestions.map(q => {
-                const isSelected = testData.selectedQuestions.some(sq => sq._id === q._id);
-                return (
-                  <div 
-                    key={q._id} 
-                    onClick={() => toggleQuestionSelection(q)}
-                    className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex gap-4 ${isSelected ? 'border-indigo-500 bg-indigo-50' : 'border-slate-100 hover:border-indigo-200 hover:bg-slate-50'}`}
-                  >
-                    <div className="pt-1">
-                      <div className={`w-6 h-6 rounded-md flex items-center justify-center border-2 transition-colors ${isSelected ? 'bg-indigo-500 border-indigo-500 text-white' : 'bg-white border-slate-300'}`}>
-                        {isSelected && '✓'}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-bold text-slate-500 bg-slate-200/50 px-2 py-0.5 rounded">{q.topic}</span>
-                        <span className="text-xs font-bold text-slate-500 bg-slate-200/50 px-2 py-0.5 rounded">{q.marks} Mark{q.marks > 1 ? 's' : ''}</span>
-                      </div>
-                      <p className="text-slate-800 font-medium">{q.text}</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="pt-6 mt-4 border-t border-slate-200 flex items-center justify-between">
-              <div className="bg-slate-900 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-4">
-                <span>{testData.selectedQuestions.length} Selected</span>
-                <span className="w-px h-4 bg-slate-700"></span>
-                <span className="text-indigo-400">{totalMarks} Total Marks</span>
-              </div>
-              <div className="flex gap-3">
-                <button onClick={() => setStep(1)} className="btn-secondary py-2.5">← Back</button>
-                <button 
-                  onClick={() => setStep(3)} 
-                  disabled={testData.selectedQuestions.length === 0}
-                  className="btn-primary py-2.5 px-8"
+          <div className="space-y-2.5 max-h-[60vh] overflow-y-auto pr-1">
+            {questions.map((q, idx) => {
+              const isSelected = selectedQuestions.includes(q.id);
+              return (
+                <div
+                  key={q.id}
+                  onClick={() => toggleSelectQuestion(q.id)}
+                  className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                    isSelected
+                      ? 'bg-blue-50/50 border-blue-500 ring-1 ring-blue-500/30'
+                      : 'bg-white border-slate-200 hover:border-slate-300'
+                  }`}
                 >
-                  Review →
-                </button>
+                  <div className="flex items-start justify-between gap-3 mb-1.5">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => {}}
+                        className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4"
+                      />
+                      <span className="text-xs font-bold text-slate-700">Q{idx + 1}</span>
+                      <span className="text-[11px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                        {q.topic}
+                      </span>
+                      {q.sourceExam && (
+                        <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                          {q.sourceExam}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-xs font-semibold text-slate-500">+{q.marks} mark</span>
+                  </div>
+                  <p className="text-xs font-medium text-slate-800 ml-6 line-clamp-2">
+                    {q.questionText}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="flex items-center justify-between pt-2">
+            <button
+              type="button"
+              onClick={() => setStep(1)}
+              className="btn-secondary text-xs py-2 px-4"
+            >
+              ← Back
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (selectedQuestions.length === 0) {
+                  toast.error('Please select at least 1 question');
+                  return;
+                }
+                setStep(3);
+              }}
+              className="btn-primary text-xs py-2 px-4"
+            >
+              Proceed to Review →
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Step 3: Review & Publish */}
+      {step === 3 && (
+        <div className="card space-y-6">
+          <div className="border-b border-slate-100 pb-4">
+            <h2 className="text-base font-bold text-slate-900">Review Assessment Configuration</h2>
+            <p className="text-xs text-slate-500">Confirm all assessment settings before publishing to student portal</p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-2">
+              <div className="text-slate-400 font-semibold text-[11px] uppercase tracking-wider">Parameters</div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Title:</span>
+                <span className="font-bold text-slate-900">{formData.title}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Subject:</span>
+                <span className="font-medium text-slate-700">{formData.subject}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Topic:</span>
+                <span className="font-medium text-slate-700">{formData.topic}</span>
+              </div>
+            </div>
+
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-2">
+              <div className="text-slate-400 font-semibold text-[11px] uppercase tracking-wider">Exam Environment</div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Test Duration:</span>
+                <span className="font-bold text-blue-600">{formData.duration} Minutes</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Question Count:</span>
+                <span className="font-bold text-slate-900">{selectedQuestions.length} Questions</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Maximum Marks:</span>
+                <span className="font-bold text-emerald-600">{totalMarks} Marks</span>
               </div>
             </div>
           </div>
-        )}
 
-        {/* STEP 3: Review */}
-        {step === 3 && (
-          <div className="p-8">
-            <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2"><span>👀</span> Final Review</h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-              <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100">
-                <h3 className="font-bold text-slate-400 text-sm uppercase tracking-wider mb-4">Test Details</h3>
-                <dl className="space-y-4">
-                  <div>
-                    <dt className="text-xs font-bold text-slate-500 mb-1">Title</dt>
-                    <dd className="text-lg font-bold text-slate-800">{testData.title}</dd>
-                  </div>
-                  <div className="flex gap-8">
-                    <div>
-                      <dt className="text-xs font-bold text-slate-500 mb-1">Topic</dt>
-                      <dd className="font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded inline-block">{testData.topic}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-xs font-bold text-slate-500 mb-1">Duration</dt>
-                      <dd className="font-bold text-slate-800 flex items-center gap-1">⏱️ {testData.duration} mins</dd>
-                    </div>
-                  </div>
-                </dl>
-              </div>
-              
-              <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100 flex flex-col justify-center items-center text-center">
-                 <h3 className="font-bold text-slate-400 text-sm uppercase tracking-wider mb-4">Assessment Value</h3>
-                 <div className="text-5xl font-black text-indigo-600 mb-2">{testData.selectedQuestions.length}</div>
-                 <p className="text-slate-600 font-medium mb-4">Questions Selected</p>
-                 <div className="inline-block bg-slate-200 text-slate-700 font-bold px-4 py-1.5 rounded-full text-sm">
-                   Total: {totalMarks} Marks
-                 </div>
-              </div>
-            </div>
-
-            <div className="pt-6 border-t border-slate-100 flex justify-between items-center">
-              <button onClick={() => setStep(2)} className="btn-secondary">← Edit Questions</button>
-              <button 
-                onClick={handleCreateTest} 
-                disabled={loading}
-                className="btn-primary py-4 px-10 text-lg flex items-center gap-2 shadow-indigo-500/30"
-              >
-                {loading ? (
-                   <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> Publishing...</>
-                ) : '🚀 Publish Test Now'}
-              </button>
-            </div>
+          <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={() => setStep(2)}
+              className="btn-secondary text-xs py-2 px-4"
+            >
+              ← Edit Questions
+            </button>
+            <button
+              type="button"
+              disabled={submitting}
+              onClick={handleSubmit}
+              className="btn-primary text-xs py-2.5 px-6"
+            >
+              {submitting ? 'Publishing Test...' : 'Publish Assessment'}
+            </button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

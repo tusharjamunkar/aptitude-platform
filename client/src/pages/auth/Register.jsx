@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import api from '../../api/axios';
+import { useAuth } from '../../context/AuthContext';
+import { AcademicCapIcon, CheckCircleIcon } from '../../components/Icons';
 
 export default function Register() {
   const [formData, setFormData] = useState({
@@ -9,185 +11,335 @@ export default function Register() {
     email: '',
     password: '',
     confirmPassword: '',
-    role: 'STUDENT'
+    role: 'STUDENT',
+    studyYear: '1st Year',
+    department: 'Computer Science & Engineering',
+    rollNumber: ''
   });
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
+  const { login } = useAuth();
+
+  const studyYearOptions = [
+    '1st Year',
+    '2nd Year',
+    '3rd Year',
+    '4th Year'
+  ];
+
+  const departmentOptions = [
+    'Computer Science & Engineering',
+    'Information Technology',
+    'Electronics & Communication Engineering',
+    'Electrical & Electronics Engineering',
+    'Mechanical Engineering',
+    'Civil Engineering',
+    'Artificial Intelligence & Data Science',
+    'Other'
+  ];
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
-      return;
+  const validate = () => {
+    if (!formData.name.trim() || formData.name.trim().length < 2) {
+      return 'Full Name must be at least 2 characters long.';
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email.trim())) {
+      return 'Please provide a valid email address.';
     }
     if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters');
+      return 'Password must be at least 6 characters long.';
+    }
+    if (formData.password !== formData.confirmPassword) {
+      return 'Passwords do not match.';
+    }
+    if (formData.role === 'STUDENT') {
+      if (!formData.studyYear) {
+        return 'Please select your Study Year.';
+      }
+      if (!formData.department) {
+        return 'Please select your Department.';
+      }
+      if (!formData.rollNumber.trim() || formData.rollNumber.trim().length < 3) {
+        return 'Please enter a valid University Roll Number (at least 3 characters).';
+      }
+    }
+    return null;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const validationError = validate();
+    if (validationError) {
+      setError(validationError);
+      toast.error(validationError);
       return;
     }
 
     setLoading(true);
     setError(null);
     try {
-      await api.post('/auth/register', formData);
-      toast.success('Registration successful! Please login. 🎉');
-      navigate('/login');
+      const payload = {
+        name: formData.name.trim(),
+        email: formData.email.trim(),
+        password: formData.password,
+        role: formData.role,
+        studyYear: formData.role === 'STUDENT' ? formData.studyYear : null,
+        department: formData.role === 'STUDENT' ? formData.department : null,
+        rollNumber: formData.role === 'STUDENT' ? formData.rollNumber.trim().toUpperCase() : null
+      };
+
+      const res = await api.post('/auth/register', payload);
+      login(res.data.token, res.data.user);
+      toast.success('Registration successful! Welcome to the platform.');
+      
+      if (res.data.user.role === 'TEACHER') {
+        navigate('/teacher');
+      } else {
+        navigate('/student');
+      }
     } catch (err) {
-      setError(err.response?.data?.error || err.response?.data?.message || 'Registration failed. Please try again.');
-      toast.error('Registration failed 😢');
+      const msg = err.response?.data?.error || err.response?.data?.message || 'Registration failed. Please check your details.';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row overflow-hidden bg-white">
-      {/* Left Half - Gradient Banner */}
-      <div className="md:w-1/2 bg-gradient-to-br from-purple-800 via-indigo-800 to-blue-900 text-white p-12 flex flex-col justify-center relative overflow-hidden hidden md:flex">
-        <div className="absolute top-20 right-20 w-48 h-48 bg-white rounded-full opacity-10 blur-3xl mix-blend-screen"></div>
-        <div className="absolute bottom-20 left-20 w-72 h-72 bg-blue-500 rounded-full opacity-20 blur-3xl mix-blend-screen"></div>
+    <div className="min-h-screen flex bg-slate-50">
+      {/* Left Branding Side (Desktop) */}
+      <div className="hidden lg:flex lg:w-5/12 bg-slate-900 text-white flex-col justify-between p-12 relative overflow-hidden border-r border-slate-800">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow">
+            <AcademicCapIcon className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold tracking-tight text-white">AptitudeTest Pro</h1>
+            <p className="text-xs text-slate-400 font-medium">Campus Placement Preparation</p>
+          </div>
+        </div>
 
-        <div className="relative z-10 max-w-md mx-auto">
-          <h1 className="text-4xl font-black tracking-tight mb-4 text-transparent bg-clip-text bg-gradient-to-r from-white to-blue-200">
-            Join the Community 🚀
-          </h1>
-          <p className="text-xl text-blue-100 font-medium mb-12">
-            Start your aptitude journey today
+        <div className="max-w-sm my-auto">
+          <h2 className="text-3xl font-extrabold text-white tracking-tight leading-tight mb-4">
+            Student & Faculty Registration
+          </h2>
+          <p className="text-sm text-slate-300 leading-relaxed mb-8">
+            Create your account to access curated 45-minute assessments, practice with real previous-year exams, and track topic-wise proficiency.
           </p>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-white/10 p-6 rounded-2xl border border-white/20 backdrop-blur-md">
-              <div className="text-3xl mb-2">👨🎓</div>
-              <div className="text-2xl font-bold">500+</div>
-              <div className="text-blue-200 text-sm font-medium">Students</div>
+
+          <div className="space-y-3.5 border-t border-slate-800 pt-6">
+            <div className="flex items-center gap-3 text-xs text-slate-300 font-medium">
+              <CheckCircleIcon className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>Full departmental tracking for academic cohorts</span>
             </div>
-            <div className="bg-white/10 p-6 rounded-2xl border border-white/20 backdrop-blur-md">
-              <div className="text-3xl mb-2">📚</div>
-              <div className="text-2xl font-bold">25+</div>
-              <div className="text-blue-200 text-sm font-medium">Topics</div>
+            <div className="flex items-center gap-3 text-xs text-slate-300 font-medium">
+              <CheckCircleIcon className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>Standard 45-minute timed test conditions</span>
             </div>
-            <div className="bg-white/10 p-6 rounded-2xl border border-white/20 backdrop-blur-md col-span-2">
-              <div className="text-3xl mb-2">⚡</div>
-              <div className="text-2xl font-bold">Real-time Results</div>
-              <div className="text-blue-200 text-sm font-medium">Instant AI feedback</div>
+            <div className="flex items-center gap-3 text-xs text-slate-300 font-medium">
+              <CheckCircleIcon className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>Detailed performance radar & YouTube lecture suggestions</span>
             </div>
           </div>
         </div>
+
+        <div className="text-xs text-slate-400">
+          Secure Institutional Assessment System
+        </div>
       </div>
 
-      {/* Right Half - Form */}
-      <div className="w-full md:w-1/2 flex items-center justify-center p-8 bg-slate-50 overflow-y-auto">
-        <div className="w-full max-w-md bg-white p-8 rounded-3xl shadow-xl border border-slate-100 my-8">
-          <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold text-slate-800 mb-2">Create Account</h2>
-            <p className="text-slate-500 font-medium">Join us and start learning!</p>
+      {/* Right Form Side */}
+      <div className="flex-1 flex items-center justify-center p-6 sm:p-12 overflow-y-auto">
+        <div className="w-full max-w-lg bg-white rounded-2xl border border-slate-200 shadow-sm p-8 my-auto">
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Create your account</h2>
+            <p className="text-xs text-slate-500 mt-1">Please enter your academic details accurately</p>
           </div>
 
           {error && (
-            <div className="bg-red-50 text-red-600 p-4 rounded-xl mb-6 text-sm font-medium flex items-center gap-2 border border-red-100">
-              <span className="text-lg">⚠️</span> {error}
+            <div className="mb-5 p-3.5 rounded-lg bg-red-50 border border-red-200 text-xs font-medium text-red-700 flex items-start gap-2.5">
+              <span className="font-bold shrink-0">Error:</span>
+              <span>{error}</span>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Role Switcher */}
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">Full Name</label>
+              <label className="label-text">Account Type</label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, role: 'STUDENT' })}
+                  className={`py-2 px-3 rounded-lg text-xs font-semibold border transition-all text-center ${
+                    formData.role === 'STUDENT'
+                      ? 'border-blue-600 bg-blue-50 text-blue-700 ring-1 ring-blue-600'
+                      : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  Student Account
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, role: 'TEACHER' })}
+                  className={`py-2 px-3 rounded-lg text-xs font-semibold border transition-all text-center ${
+                    formData.role === 'TEACHER'
+                      ? 'border-blue-600 bg-blue-50 text-blue-700 ring-1 ring-blue-600'
+                      : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  Faculty / Teacher Account
+                </button>
+              </div>
+            </div>
+
+            {/* Full Name */}
+            <div>
+              <label className="label-text">Full Name</label>
               <input
                 type="text"
                 name="name"
                 required
                 className="input-field"
-                placeholder="John Doe"
+                placeholder="e.g. Rahul Sharma"
                 value={formData.name}
                 onChange={handleChange}
+                autoComplete="name"
               />
             </div>
-            
+
+            {/* Email */}
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">Email</label>
+              <label className="label-text">Institutional Email</label>
               <input
                 type="email"
                 name="email"
                 required
                 className="input-field"
-                placeholder="you@example.com"
+                placeholder="student@university.edu"
                 value={formData.email}
                 onChange={handleChange}
+                autoComplete="email"
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            {/* Student Specific Fields: Study Year, Department, Roll Number */}
+            {formData.role === 'STUDENT' && (
+              <div className="space-y-4 p-4 rounded-xl bg-slate-50 border border-slate-200/80">
+                <div className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                  Academic Information
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div>
+                    <label className="label-text">Study Year</label>
+                    <select
+                      name="studyYear"
+                      value={formData.studyYear}
+                      onChange={handleChange}
+                      className="select-field"
+                    >
+                      {studyYearOptions.map((yr) => (
+                        <option key={yr} value={yr}>
+                          {yr}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="label-text">Roll Number</label>
+                    <input
+                      type="text"
+                      name="rollNumber"
+                      required
+                      className="input-field uppercase font-mono"
+                      placeholder="e.g. 21CS045"
+                      value={formData.rollNumber}
+                      onChange={handleChange}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="label-text">Department / Discipline</label>
+                  <select
+                    name="department"
+                    value={formData.department}
+                    onChange={handleChange}
+                    className="select-field"
+                  >
+                    {departmentOptions.map((dept) => (
+                      <option key={dept} value={dept}>
+                        {dept}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
+
+            {/* Password and Confirm Password */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">Password</label>
+                <label className="label-text">Password</label>
                 <input
                   type="password"
                   name="password"
                   required
                   className="input-field"
-                  placeholder="••••••••"
+                  placeholder="Min 6 characters"
                   value={formData.password}
                   onChange={handleChange}
+                  autoComplete="new-password"
                 />
               </div>
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">Confirm</label>
+                <label className="label-text">Confirm Password</label>
                 <input
                   type="password"
                   name="confirmPassword"
                   required
                   className="input-field"
-                  placeholder="••••••••"
+                  placeholder="Repeat password"
                   value={formData.confirmPassword}
                   onChange={handleChange}
+                  autoComplete="new-password"
                 />
-              </div>
-            </div>
-
-            <div className="pt-2">
-              <label className="block text-sm font-bold text-slate-700 mb-3">I am a...</label>
-              <div className="flex gap-4">
-                <div 
-                  onClick={() => setFormData({...formData, role: 'STUDENT'})}
-                  className={`flex-1 cursor-pointer rounded-2xl p-4 border-2 transition-all text-center ${formData.role === 'STUDENT' ? 'border-indigo-600 bg-indigo-50 shadow-md transform scale-105' : 'border-gray-200 hover:border-indigo-300'}`}
-                >
-                  <div className="text-3xl mb-2">👨🎓</div>
-                  <div className={`font-bold ${formData.role === 'STUDENT' ? 'text-indigo-700' : 'text-gray-600'}`}>Student</div>
-                </div>
-                <div 
-                  onClick={() => setFormData({...formData, role: 'TEACHER'})}
-                  className={`flex-1 cursor-pointer rounded-2xl p-4 border-2 transition-all text-center ${formData.role === 'TEACHER' ? 'border-indigo-600 bg-indigo-50 shadow-md transform scale-105' : 'border-gray-200 hover:border-indigo-300'}`}
-                >
-                  <div className="text-3xl mb-2">👩🏫</div>
-                  <div className={`font-bold ${formData.role === 'TEACHER' ? 'text-indigo-700' : 'text-gray-600'}`}>Teacher</div>
-                </div>
               </div>
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="btn-primary w-full py-4 text-lg mt-6 flex items-center justify-center gap-2"
+              className="btn-primary w-full py-2.5 mt-2"
             >
               {loading ? (
-                <>
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                  Creating Account...
-                </>
+                <span className="flex items-center gap-2">
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                  <span>Creating Account...</span>
+                </span>
               ) : (
-                'Create Account ✨'
+                <span>Complete Registration</span>
               )}
             </button>
           </form>
 
-          <p className="mt-8 text-center text-slate-500 font-medium">
-            Already have an account?{' '}
-            <Link to="/login" className="text-indigo-600 font-bold hover:text-indigo-800 transition-colors">
-              Sign In 🔑
-            </Link>
-          </p>
+          <div className="mt-6 pt-6 border-t border-slate-100 text-center">
+            <p className="text-xs text-slate-500">
+              Already have an account?{' '}
+              <Link to="/login" className="font-semibold text-blue-600 hover:text-blue-700 transition-colors">
+                Sign in here
+              </Link>
+            </p>
+          </div>
         </div>
       </div>
     </div>

@@ -1,93 +1,122 @@
 import React, { useState, useEffect } from 'react';
+import api from '../../api/axios';
+import { TrophyIcon, CheckCircleIcon } from '../../components/Icons';
 
 export default function StudentMilestones() {
-  const [loading, setLoading] = useState(true);
   const [milestones, setMilestones] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setTimeout(() => {
-      setMilestones([
-        { id: 1, title: 'Novice', desc: 'Complete your first test', required: 1, current: 1, achieved: true, date: '10/05/2023', icon: '🥚' },
-        { id: 2, title: 'Apprentice', desc: 'Complete 5 tests', required: 5, current: 5, achieved: true, date: '15/05/2023', icon: '🐣' },
-        { id: 3, title: 'Scholar', desc: 'Score above 80% on 3 tests', required: 3, current: 2, achieved: false, icon: '🎓' },
-        { id: 4, title: 'Master', desc: 'Maintain a 5-day streak', required: 5, current: 0, achieved: false, icon: '👑' },
-        { id: 5, title: 'Legend', desc: 'Top 10% in a global test', required: 1, current: 0, achieved: false, icon: '🐉' },
-      ]);
-      setLoading(false);
-    }, 600);
+    fetchMilestones();
   }, []);
 
+  const fetchMilestones = async () => {
+    try {
+      setLoading(true);
+      const res = await api.get('/milestones/my-progress');
+      setMilestones(res.data?.milestones || []);
+    } catch (err) {
+      console.error('Error fetching milestones:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (loading) {
-    return <div className="flex justify-center p-20"><div className="animate-spin rounded-full h-12 w-12 border-b-4 border-purple-600"></div></div>;
+    return (
+      <div className="card p-12 text-center">
+        <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+        <p className="text-xs text-slate-500">Loading your milestones journey...</p>
+      </div>
+    );
   }
 
-  const achievedCount = milestones.filter(m => m.achieved).length;
-  const progressPercent = Math.round((achievedCount / milestones.length) * 100);
+  const achievedCount = milestones.filter((m) => m.isAchieved).length;
+  const progressPercent = milestones.length > 0 ? Math.round((achievedCount / milestones.length) * 100) : 0;
 
   return (
-    <div className="max-w-3xl mx-auto pb-16">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-br from-indigo-900 to-purple-900 rounded-3xl p-8 text-white shadow-xl mb-12 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4"></div>
-        <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8 text-center md:text-left">
-          <div>
-            <h1 className="text-3xl font-black mb-2 flex items-center justify-center md:justify-start gap-3">
-              🏆 Your Journey
-            </h1>
-            <p className="text-purple-200 font-medium text-lg">Unlock achievements as you learn.</p>
+      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 mb-2">
+            <TrophyIcon className="w-3.5 h-3.5" />
+            <span>Achievement Badges</span>
           </div>
-          
-          <div className="w-32 h-32 rounded-full border-4 border-white/20 flex items-center justify-center relative bg-white/5 backdrop-blur-sm shadow-inner">
-            <svg className="absolute inset-0 w-full h-full -rotate-90">
-              <circle cx="60" cy="60" r="56" fill="none" stroke="currentColor" strokeWidth="8" className="text-white/10" />
-              <circle cx="60" cy="60" r="56" fill="none" stroke="currentColor" strokeWidth="8" strokeDasharray="351.8" strokeDashoffset={351.8 - (351.8 * progressPercent) / 100} className="text-emerald-400 drop-shadow-md transition-all duration-1000" strokeLinecap="round" />
-            </svg>
-            <div className="text-center">
-              <div className="text-3xl font-black text-white">{progressPercent}%</div>
-              <div className="text-[10px] uppercase font-bold text-emerald-400 tracking-wider">Complete</div>
-            </div>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Milestones Journey</h1>
+          <p className="text-xs text-slate-500 mt-1">
+            Complete assessment goals and maintain high accuracy to unlock institutional badges
+          </p>
+        </div>
+
+        <div className="text-right sm:border-l sm:border-slate-100 sm:pl-6">
+          <div className="text-2xl font-bold text-slate-900">
+            {achievedCount} / {milestones.length}
           </div>
+          <p className="text-xs text-slate-500 font-medium">Badges Unlocked ({progressPercent}%)</p>
         </div>
       </div>
 
-      {/* Timeline */}
-      <div className="space-y-6 relative before:absolute before:inset-0 before:ml-[3.25rem] before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-1 before:bg-gradient-to-b before:from-slate-200 before:via-slate-200 before:to-transparent">
-        
-        {milestones.map((m, idx) => (
-          <div key={m.id} className={`relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active`}>
-            {/* Icon marker */}
-            <div className={`flex items-center justify-center w-12 h-12 rounded-full border-4 shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10 transition-transform ${m.achieved ? 'bg-emerald-100 border-emerald-500 text-2xl scale-110' : m.current > 0 ? 'bg-indigo-50 border-indigo-400 text-xl' : 'bg-slate-50 border-slate-300 text-xl grayscale'}`}>
-              {m.achieved ? m.icon : m.icon}
-            </div>
-            
-            {/* Card */}
-            <div className={`w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] p-5 rounded-2xl border-2 transition-all ${m.achieved ? 'bg-gradient-to-r from-emerald-50 to-green-50 border-emerald-200 shadow-md' : m.current > 0 ? 'bg-white border-indigo-200 shadow-sm' : 'bg-slate-50 border-slate-200 text-slate-500'}`}>
-              <div className="flex items-start justify-between mb-2">
-                <h3 className={`text-lg font-black ${m.achieved ? 'text-emerald-800' : 'text-slate-800'}`}>{m.title}</h3>
-                {m.achieved && <span className="text-xs font-bold text-emerald-600 bg-white px-2 py-1 rounded-md border border-emerald-100 shadow-sm">{m.date}</span>}
-                {!m.achieved && m.current === 0 && <span className="text-slate-400">🔒</span>}
-              </div>
-              <p className={`text-sm font-medium mb-4 ${m.achieved ? 'text-emerald-700/80' : 'text-slate-500'}`}>{m.desc}</p>
-              
-              {!m.achieved && (
-                <div className="w-full">
-                  <div className="flex justify-between text-xs font-bold mb-1.5">
-                    <span className="text-indigo-600">Progress</span>
-                    <span className="text-slate-500">{m.current} / {m.required}</span>
-                  </div>
-                  <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
-                    <div className="h-full bg-indigo-500 rounded-full transition-all" style={{ width: `${(m.current / m.required) * 100}%` }}></div>
-                  </div>
+      {/* Milestones Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        {milestones.map((m) => (
+          <div
+            key={m.id}
+            className={`rounded-xl border p-6 shadow-sm transition-all flex flex-col justify-between ${
+              m.isAchieved
+                ? 'bg-white border-emerald-200 ring-1 ring-emerald-500/20'
+                : 'bg-white border-slate-200'
+            }`}
+          >
+            <div>
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-2xl border border-slate-200 shrink-0">
+                  {m.badgeIcon || '🏆'}
                 </div>
+                <span
+                  className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full border ${
+                    m.isAchieved
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      : 'bg-slate-100 text-slate-600 border-slate-200'
+                  }`}
+                >
+                  {m.isAchieved ? 'Achieved' : 'In Progress'}
+                </span>
+              </div>
+
+              <h3 className="text-base font-bold text-slate-900 mb-1">{m.title}</h3>
+              <p className="text-xs text-slate-500 leading-relaxed mb-4">{m.description}</p>
+            </div>
+
+            <div className="pt-4 border-t border-slate-100">
+              <div className="flex justify-between text-xs text-slate-500 mb-1.5 font-medium">
+                <span>Progress</span>
+                <span className="font-bold text-slate-800">
+                  {m.testsCompleted} / {m.requiredTestsCount} Tests
+                </span>
+              </div>
+
+              {/* Progress Bar */}
+              <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-300 ${
+                    m.isAchieved ? 'bg-emerald-500' : 'bg-blue-600'
+                  }`}
+                  style={{
+                    width: `${Math.min(100, Math.round((m.testsCompleted / (m.requiredTestsCount || 1)) * 100))}%`
+                  }}
+                />
+              </div>
+
+              {m.achievedAt && (
+                <p className="text-[11px] text-emerald-600 font-medium mt-2 flex items-center gap-1">
+                  <CheckCircleIcon className="w-3.5 h-3.5" />
+                  <span>Unlocked on {new Date(m.achievedAt).toLocaleDateString()}</span>
+                </p>
               )}
             </div>
           </div>
         ))}
-        
-      </div>
-
-      <div className="mt-16 text-center">
-        <p className="text-slate-500 font-medium italic">"Success is the sum of small efforts, repeated day in and day out."</p>
       </div>
     </div>
   );

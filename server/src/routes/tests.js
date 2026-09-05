@@ -80,7 +80,18 @@ router.get('/:id/results', authenticate, requireTeacher, async (req, res) => {
     const { id } = req.params;
     const attempts = await prisma.testAttempt.findMany({
       where: { testId: id },
-      include: { student: { select: { id: true, name: true, email: true } } },
+      include: {
+        student: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            rollNumber: true,
+            department: true,
+            studyYear: true
+          }
+        }
+      },
       orderBy: { score: 'desc' }
     });
     res.json(attempts);

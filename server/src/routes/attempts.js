@@ -64,9 +64,20 @@ router.put('/:id/answer', async (req, res) => {
     const { id } = req.params;
     const { questionId, selectedAnswer } = req.body;
 
-    const attempt = await prisma.testAttempt.findUnique({ where: { id } });
+    const attempt = await prisma.testAttempt.findUnique({
+      where: { id },
+      include: { test: true }
+    });
     if (!attempt || attempt.studentId !== req.user.id || attempt.status !== 'IN_PROGRESS') {
       return res.status(403).json({ error: 'Cannot modify this attempt' });
+    }
+
+    // Backend time validation: ensure elapsed time has not exceeded allowed duration (+30s buffer)
+    const durationMinutes = attempt.test?.duration || 45;
+    const elapsedMs = Date.now() - new Date(attempt.startedAt).getTime();
+    const maxAllowedMs = (durationMinutes * 60 + 30) * 1000;
+    if (elapsedMs > maxAllowedMs) {
+      return res.status(400).json({ error: 'Time limit reached. Answers can no longer be updated.' });
     }
 
     const question = await prisma.question.findUnique({ where: { id: questionId } });

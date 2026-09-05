@@ -1,182 +1,1214 @@
 const router = require('express').Router();
 
-// Comprehensive mock YouTube video database for all aptitude topics
-// Video IDs are real well-known educational videos
-const mockVideoDB = {
-  'number system': [
-    { id: 'ns1', title: 'Number System Complete Concepts | Aptitude', channel: 'TalentSprint Aptitude', videoId: 'e4X84W9y9rA', thumbnail: 'https://img.youtube.com/vi/e4X84W9y9rA/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=e4X84W9y9rA', duration: '28:14', views: '1.2M' },
-    { id: 'ns2', title: 'Number System Tricks & Shortcuts', channel: 'Anil Kumar', videoId: 'MKESoGV7DwQ', thumbnail: 'https://img.youtube.com/vi/MKESoGV7DwQ/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=MKESoGV7DwQ', duration: '32:45', views: '890K' },
-    { id: 'ns3', title: 'Number System for Competitive Exams', channel: 'CareerRide', videoId: '9cFIGHTZghc', thumbnail: 'https://img.youtube.com/vi/9cFIGHTZghc/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=9cFIGHTZghc', duration: '18:22', views: '654K' },
-    { id: 'ns4', title: 'Number System Full Chapter in One Video', channel: 'Study Smart', videoId: 'bfTbcBmPv3E', thumbnail: 'https://img.youtube.com/vi/bfTbcBmPv3E/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=bfTbcBmPv3E', duration: '45:10', views: '2.1M' }
+// 100% Verified, live educational YouTube videos for all 25 aptitude topics
+// Every single link has been tested and confirmed via YouTube oEmbed API
+const verifiedVideoDB = {
+  "number system": [
+    {
+      "id": "number_system_1",
+      "title": "Number System || Introduction (LESSON-1)",
+      "channel": "Feel Free to Learn",
+      "videoId": "qwHJtfEUCgE",
+      "thumbnail": "https://img.youtube.com/vi/qwHJtfEUCgE/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=qwHJtfEUCgE",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "number_system_2",
+      "title": "Number System || Divisibility Rule (LESSON-2) Tricks to Learn",
+      "channel": "Feel Free to Learn",
+      "videoId": "QUP1FpINICo",
+      "thumbnail": "https://img.youtube.com/vi/QUP1FpINICo/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=QUP1FpINICo",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "number_system_3",
+      "title": "Number System || Introduction(Lesson-1) || TAMIL",
+      "channel": "FeelFreetoLearn_தமிழ்",
+      "videoId": "aT9gStcGvnc",
+      "thumbnail": "https://img.youtube.com/vi/aT9gStcGvnc/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=aT9gStcGvnc",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "number_system_4",
+      "title": "Number System || Divisibility Rule(Lesson-2) Tricks to Learn || TAMIL",
+      "channel": "FeelFreetoLearn_தமிழ்",
+      "videoId": "fjVTSy2cPD8",
+      "thumbnail": "https://img.youtube.com/vi/fjVTSy2cPD8/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=fjVTSy2cPD8",
+      "duration": "Lesson",
+      "views": "High Quality"
+    }
   ],
-  'percentages': [
-    { id: 'pc1', title: 'Percentage - Concepts, Tricks & Examples', channel: 'TalentSprint Aptitude', videoId: 'mSqT25QvxGQ', thumbnail: 'https://img.youtube.com/vi/mSqT25QvxGQ/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=mSqT25QvxGQ', duration: '24:30', views: '1.5M' },
-    { id: 'pc2', title: 'Percentage Tricks - Shortcut Methods', channel: 'Anil Kumar', videoId: 'kFjYOCUKsQs', thumbnail: 'https://img.youtube.com/vi/kFjYOCUKsQs/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=kFjYOCUKsQs', duration: '19:45', views: '780K' },
-    { id: 'pc3', title: 'Percentage Questions for All Exams', channel: 'CareerRide', videoId: 'fYVMM0AGDYQ', thumbnail: 'https://img.youtube.com/vi/fYVMM0AGDYQ/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=fYVMM0AGDYQ', duration: '35:00', views: '450K' },
-    { id: 'pc4', title: 'Percentage Complete Chapter | Bank PO', channel: 'Unacademy CAT', videoId: 'Yd3JzDsWXHQ', thumbnail: 'https://img.youtube.com/vi/Yd3JzDsWXHQ/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=Yd3JzDsWXHQ', duration: '41:12', views: '920K' }
+  "percentages": [
+    {
+      "id": "percentages_1",
+      "title": "Percentage -  Shortcuts & Tricks for Placement Tests, Job Interviews & Exams",
+      "channel": "CareerRide",
+      "videoId": "RWdNhJWwzSs",
+      "thumbnail": "https://img.youtube.com/vi/RWdNhJWwzSs/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=RWdNhJWwzSs",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "percentages_2",
+      "title": "Percentage Tricks/Shortcuts/Formula | Percentage Problems Tricks and Shortcuts | DSSSB, CTET, KVS",
+      "channel": "Dear Sir",
+      "videoId": "gbR_m1byDns",
+      "thumbnail": "https://img.youtube.com/vi/gbR_m1byDns/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=gbR_m1byDns",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "percentages_3",
+      "title": "Best Percent Hack - How find Percents Shortcut",
+      "channel": "Guinness And Math Guy",
+      "videoId": "WG19nzEBd7I",
+      "thumbnail": "https://img.youtube.com/vi/WG19nzEBd7I/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=WG19nzEBd7I",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "percentages_4",
+      "title": "Math Tricks - Percentage Tricks - \"Zero in the Middle\" Math Hack - Mental Math Tricks #mathstricks",
+      "channel": "JustQuant",
+      "videoId": "j3o-mhACTX4",
+      "thumbnail": "https://img.youtube.com/vi/j3o-mhACTX4/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=j3o-mhACTX4",
+      "duration": "Lesson",
+      "views": "High Quality"
+    }
   ],
-  'profit and loss': [
-    { id: 'pl1', title: 'Profit and Loss - Complete Chapter', channel: 'TalentSprint Aptitude', videoId: 'HhQrJDMrYI8', thumbnail: 'https://img.youtube.com/vi/HhQrJDMrYI8/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=HhQrJDMrYI8', duration: '22:18', views: '1.1M' },
-    { id: 'pl2', title: 'Profit & Loss Tricks and Shortcuts', channel: 'Anil Kumar', videoId: 'F3dn5FrSM5I', thumbnail: 'https://img.youtube.com/vi/F3dn5FrSM5I/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=F3dn5FrSM5I', duration: '27:55', views: '830K' },
-    { id: 'pl3', title: 'Profit Loss Discount | Aptitude Tutorial', channel: 'CareerRide', videoId: 'VDe2nGCLBkM', thumbnail: 'https://img.youtube.com/vi/VDe2nGCLBkM/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=VDe2nGCLBkM', duration: '30:00', views: '560K' },
-    { id: 'pl4', title: 'Profit and Loss - 50 Questions Solved', channel: 'Study Smart', videoId: 'Jp0BXKF1TY4', thumbnail: 'https://img.youtube.com/vi/Jp0BXKF1TY4/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=Jp0BXKF1TY4', duration: '38:20', views: '710K' }
+  "profit and loss": [
+    {
+      "id": "profit_and_loss_1",
+      "title": "Profit and Loss - Shortcuts & Tricks for Placement Tests, Job Interviews & Exams",
+      "channel": "CareerRide",
+      "videoId": "T2odvmxqi1I",
+      "thumbnail": "https://img.youtube.com/vi/T2odvmxqi1I/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=T2odvmxqi1I",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "profit_and_loss_2",
+      "title": "Aptitude Made Easy - Profit & Loss – Basics and Methods, Profit and loss shortcuts, Math tricks",
+      "channel": "Jobs & Careers",
+      "videoId": "_cW7_BUDYcw",
+      "thumbnail": "https://img.youtube.com/vi/_cW7_BUDYcw/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=_cW7_BUDYcw",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "profit_and_loss_3",
+      "title": "Profit and Loss Trick | How to solve profit and loss question for IBPS, SSC, CGL, CSAT, CAT, MAT|",
+      "channel": "imran sir maths",
+      "videoId": "DJUckY-o2c4",
+      "thumbnail": "https://img.youtube.com/vi/DJUckY-o2c4/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=DJUckY-o2c4",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "profit_and_loss_4",
+      "title": "Profit and Loss : Lesson 1 || Introduction || Formulas and Basics",
+      "channel": "Feel Free to Learn",
+      "videoId": "frDUnX_rFP4",
+      "thumbnail": "https://img.youtube.com/vi/frDUnX_rFP4/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=frDUnX_rFP4",
+      "duration": "Lesson",
+      "views": "High Quality"
+    }
   ],
-  'simple interest': [
-    { id: 'si1', title: 'Simple Interest - All Concepts & Tricks', channel: 'TalentSprint Aptitude', videoId: 'kS9UJqj4v2s', thumbnail: 'https://img.youtube.com/vi/kS9UJqj4v2s/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=kS9UJqj4v2s', duration: '16:40', views: '890K' },
-    { id: 'si2', title: 'Simple Interest Shortcuts | Aptitude', channel: 'Anil Kumar', videoId: 'tIRmjZoMR5U', thumbnail: 'https://img.youtube.com/vi/tIRmjZoMR5U/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=tIRmjZoMR5U', duration: '21:30', views: '540K' },
-    { id: 'si3', title: 'SI Problems for Placement Aptitude', channel: 'CareerRide', videoId: 'kxVfcKv7cA0', thumbnail: 'https://img.youtube.com/vi/kxVfcKv7cA0/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=kxVfcKv7cA0', duration: '14:15', views: '380K' },
-    { id: 'si4', title: 'Simple Interest - 30 Questions Practice', channel: 'Study Smart', videoId: 'Wk2Ws8a2JiQ', thumbnail: 'https://img.youtube.com/vi/Wk2Ws8a2JiQ/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=Wk2Ws8a2JiQ', duration: '25:00', views: '420K' }
+  "simple interest": [
+    {
+      "id": "simple_interest_1",
+      "title": "Simple Interest - Shortcuts & Tricks for Placement Tests, Job Interviews & Exams",
+      "channel": "CareerRide",
+      "videoId": "jvRq87ZWzIk",
+      "thumbnail": "https://img.youtube.com/vi/jvRq87ZWzIk/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=jvRq87ZWzIk",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "simple_interest_2",
+      "title": "Aptitude Made Easy - Simple Interest Full Series, Learn maths #withme #StayHome",
+      "channel": "Jobs & Careers",
+      "videoId": "9gYCxj7bfPE",
+      "thumbnail": "https://img.youtube.com/vi/9gYCxj7bfPE/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=9gYCxj7bfPE",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "simple_interest_3",
+      "title": "Simple Interest Tricks | RRB NTPC Exam Maths Trick | simple interest",
+      "channel": "imran sir maths",
+      "videoId": "u2oVoD3F7u0",
+      "thumbnail": "https://img.youtube.com/vi/u2oVoD3F7u0/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=u2oVoD3F7u0",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "simple_interest_4",
+      "title": "Simple Interest Q-1 (Quantitative Aptitude) #feelfreetolearn #aptitudequestions  #FFLtricks #FFL",
+      "channel": "Feel Free to Learn",
+      "videoId": "XY4k0Qaa_e8",
+      "thumbnail": "https://img.youtube.com/vi/XY4k0Qaa_e8/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=XY4k0Qaa_e8",
+      "duration": "Lesson",
+      "views": "High Quality"
+    }
   ],
-  'compound interest': [
-    { id: 'ci1', title: 'Compound Interest - Full Chapter', channel: 'TalentSprint Aptitude', videoId: 'gFQNNcvs8-E', thumbnail: 'https://img.youtube.com/vi/gFQNNcvs8-E/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=gFQNNcvs8-E', duration: '28:55', views: '970K' },
-    { id: 'ci2', title: 'Compound Interest Tricks & Formula', channel: 'Anil Kumar', videoId: 'O8Yk5KhO3lc', thumbnail: 'https://img.youtube.com/vi/O8Yk5KhO3lc/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=O8Yk5KhO3lc', duration: '33:10', views: '620K' },
-    { id: 'ci3', title: 'CI vs SI Difference Explained', channel: 'CareerRide', videoId: 'r5N8XLPeHcM', thumbnail: 'https://img.youtube.com/vi/r5N8XLPeHcM/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=r5N8XLPeHcM', duration: '18:30', views: '450K' },
-    { id: 'ci4', title: 'Compound Interest - Bank Exam Special', channel: 'Unacademy CAT', videoId: 'LqLFMBWFl0I', thumbnail: 'https://img.youtube.com/vi/LqLFMBWFl0I/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=LqLFMBWFl0I', duration: '42:00', views: '810K' }
+  "compound interest": [
+    {
+      "id": "compound_interest_1",
+      "title": "CI And SI Short Tricks In Hindi | Compound Interest Problems | General Aptitude For GATE 2024",
+      "channel": "Dr.Gajendra Purohit - GATE / IIT JAM / CSIR NET",
+      "videoId": "z2HFclpQHWc",
+      "thumbnail": "https://img.youtube.com/vi/z2HFclpQHWc/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=z2HFclpQHWc",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "compound_interest_2",
+      "title": "Compound Interest in Seconds! | CSAT Shortcut Trick for UPSC & Competitive Exams",
+      "channel": "Narayana IAS Academy Official",
+      "videoId": "HXGdxbnnujA",
+      "thumbnail": "https://img.youtube.com/vi/HXGdxbnnujA/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=HXGdxbnnujA",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "compound_interest_3",
+      "title": "compound interest trick #shorts #maths #tricks #trending",
+      "channel": "ER STUDY CIRCLE",
+      "videoId": "ZrorSCHjvMI",
+      "thumbnail": "https://img.youtube.com/vi/ZrorSCHjvMI/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=ZrorSCHjvMI",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "compound_interest_4",
+      "title": "Compound interest trick",
+      "channel": "STEP - IN MATHS",
+      "videoId": "6M90wN5xUio",
+      "thumbnail": "https://img.youtube.com/vi/6M90wN5xUio/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=6M90wN5xUio",
+      "duration": "Lesson",
+      "views": "High Quality"
+    }
   ],
-  'time and work': [
-    { id: 'tw1', title: 'Time and Work - Complete Tutorial', channel: 'TalentSprint Aptitude', videoId: '4g8J0fAoKs8', thumbnail: 'https://img.youtube.com/vi/4g8J0fAoKs8/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=4g8J0fAoKs8', duration: '30:20', views: '1.3M' },
-    { id: 'tw2', title: 'Time and Work Shortcut Methods', channel: 'Anil Kumar', videoId: '3e_w0P9fdJE', thumbnail: 'https://img.youtube.com/vi/3e_w0P9fdJE/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=3e_w0P9fdJE', duration: '24:45', views: '780K' },
-    { id: 'tw3', title: 'Work and Wages | Pipes & Cistern', channel: 'CareerRide', videoId: 'Q6uVN0PPNHQ', thumbnail: 'https://img.youtube.com/vi/Q6uVN0PPNHQ/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=Q6uVN0PPNHQ', duration: '26:00', views: '560K' },
-    { id: 'tw4', title: 'Time Work Efficiency Problems Solved', channel: 'Study Smart', videoId: 'RkXmwSaC6yk', thumbnail: 'https://img.youtube.com/vi/RkXmwSaC6yk/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=RkXmwSaC6yk', duration: '35:15', views: '640K' }
+  "time and work": [
+    {
+      "id": "time_and_work_1",
+      "title": "Time and Work - Shortcuts & Tricks for Placement Tests, Job Interviews & Exams",
+      "channel": "CareerRide",
+      "videoId": "KE7tQf9spPg",
+      "thumbnail": "https://img.youtube.com/vi/KE7tQf9spPg/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=KE7tQf9spPg",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "time_and_work_2",
+      "title": "Time & Work Trick | Maths Tricks | imran sir maths",
+      "channel": "imran sir maths",
+      "videoId": "Ajn288_rB-E",
+      "thumbnail": "https://img.youtube.com/vi/Ajn288_rB-E/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=Ajn288_rB-E",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "time_and_work_3",
+      "title": "TIME AND WORK _ Chain Rule _ Lesson #1",
+      "channel": "Feel Free to Learn",
+      "videoId": "RhCwy2j2pHY",
+      "thumbnail": "https://img.youtube.com/vi/RhCwy2j2pHY/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=RhCwy2j2pHY",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "time_and_work_4",
+      "title": "TIME AND WORK _ EFFICIENCY _ Lesson #2",
+      "channel": "Feel Free to Learn",
+      "videoId": "ce_dT_10qRQ",
+      "thumbnail": "https://img.youtube.com/vi/ce_dT_10qRQ/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=ce_dT_10qRQ",
+      "duration": "Lesson",
+      "views": "High Quality"
+    }
   ],
-  'time speed distance': [
-    { id: 'tsd1', title: 'Speed, Distance & Time - All Concepts', channel: 'TalentSprint Aptitude', videoId: 'VHGaYYSnFIg', thumbnail: 'https://img.youtube.com/vi/VHGaYYSnFIg/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=VHGaYYSnFIg', duration: '34:10', views: '1.4M' },
-    { id: 'tsd2', title: 'Speed Distance Time Tricks', channel: 'Anil Kumar', videoId: 'wMRRi78KfvM', thumbnail: 'https://img.youtube.com/vi/wMRRi78KfvM/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=wMRRi78KfvM', duration: '28:30', views: '920K' },
-    { id: 'tsd3', title: 'Relative Speed Problems | Aptitude', channel: 'CareerRide', videoId: 'pEvvHqAJNik', thumbnail: 'https://img.youtube.com/vi/pEvvHqAJNik/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=pEvvHqAJNik', duration: '22:45', views: '580K' },
-    { id: 'tsd4', title: 'Speed Distance Time Practice Set', channel: 'Study Smart', videoId: 'HTonDRMq7bM', thumbnail: 'https://img.youtube.com/vi/HTonDRMq7bM/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=HTonDRMq7bM', duration: '40:00', views: '730K' }
+  "time speed distance": [
+    {
+      "id": "time_speed_distance_1",
+      "title": "Speed, Distance & Time - Shortcuts & Tricks for Placement Tests, Job Interviews & Exams",
+      "channel": "CareerRide",
+      "videoId": "jzNxXm5twx4",
+      "thumbnail": "https://img.youtube.com/vi/jzNxXm5twx4/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=jzNxXm5twx4",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "time_speed_distance_2",
+      "title": "Time Speed and Distance Trick | Train Realted Questions | Maths Trick by imran sir | imran sir maths",
+      "channel": "imran sir maths",
+      "videoId": "m-s3vdPoIn4",
+      "thumbnail": "https://img.youtube.com/vi/m-s3vdPoIn4/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=m-s3vdPoIn4",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "time_speed_distance_3",
+      "title": "Time Speed and Distance Trick | Time Speed Distance Concept/Problems/Solutions/Tricks/Questions",
+      "channel": "Dear Sir",
+      "videoId": "oMwAHfqsQLo",
+      "thumbnail": "https://img.youtube.com/vi/oMwAHfqsQLo/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=oMwAHfqsQLo",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "time_speed_distance_4",
+      "title": "Time Speed & Distance| Time and Distance Math Tricks for SSC MTS GD CHSL|",
+      "channel": "TUMI JITBE ",
+      "videoId": "erYxF_FfvGI",
+      "thumbnail": "https://img.youtube.com/vi/erYxF_FfvGI/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=erYxF_FfvGI",
+      "duration": "Lesson",
+      "views": "High Quality"
+    }
   ],
-  'ratio and proportion': [
-    { id: 'rp1', title: 'Ratio and Proportion - Complete Chapter', channel: 'TalentSprint Aptitude', videoId: 'HNfqT1HiA9Q', thumbnail: 'https://img.youtube.com/vi/HNfqT1HiA9Q/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=HNfqT1HiA9Q', duration: '20:15', views: '870K' },
-    { id: 'rp2', title: 'Ratio Proportion Tricks for Fast Solving', channel: 'Anil Kumar', videoId: 'oYF0HNjAqoU', thumbnail: 'https://img.youtube.com/vi/oYF0HNjAqoU/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=oYF0HNjAqoU', duration: '25:30', views: '560K' },
-    { id: 'rp3', title: 'Ratio and Proportion - 40 Questions', channel: 'CareerRide', videoId: 'u8R9EtF9j7Q', thumbnail: 'https://img.youtube.com/vi/u8R9EtF9j7Q/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=u8R9EtF9j7Q', duration: '30:00', views: '420K' },
-    { id: 'rp4', title: 'Proportion Problems Solved Step by Step', channel: 'Unacademy CAT', videoId: 'VL4Y9dHlArE', thumbnail: 'https://img.youtube.com/vi/VL4Y9dHlArE/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=VL4Y9dHlArE', duration: '38:45', views: '690K' }
+  "ratio and proportion": [
+    {
+      "id": "ratio_and_proportion_1",
+      "title": "Ratio & Proportion Tricks | Maths Trick | imran sir maths",
+      "channel": "imran sir maths",
+      "videoId": "F63Op34Xqow",
+      "thumbnail": "https://img.youtube.com/vi/F63Op34Xqow/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=F63Op34Xqow",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "ratio_and_proportion_2",
+      "title": "Ratio and Proportion - Shortcuts & Tricks for Placement Tests, Job Interviews & Exams",
+      "channel": "CareerRide",
+      "videoId": "jfoJBivWlnQ",
+      "thumbnail": "https://img.youtube.com/vi/jfoJBivWlnQ/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=jfoJBivWlnQ",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "ratio_and_proportion_3",
+      "title": "Ratio and Proportion | Lesson-1(Introduction) | Quantitative Aptitude",
+      "channel": "Feel Free to Learn",
+      "videoId": "xRLNYich5Ls",
+      "thumbnail": "https://img.youtube.com/vi/xRLNYich5Ls/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=xRLNYich5Ls",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "ratio_and_proportion_4",
+      "title": "Ratio and Proportion | Lesson-2(Finding Ratio?) | Quantitative Aptitude",
+      "channel": "Feel Free to Learn",
+      "videoId": "6rbRAVomTUg",
+      "thumbnail": "https://img.youtube.com/vi/6rbRAVomTUg/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=6rbRAVomTUg",
+      "duration": "Lesson",
+      "views": "High Quality"
+    }
   ],
-  'averages': [
-    { id: 'av1', title: 'Averages - Concepts and Tricks', channel: 'TalentSprint Aptitude', videoId: 'J3GBEj01V5I', thumbnail: 'https://img.youtube.com/vi/J3GBEj01V5I/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=J3GBEj01V5I', duration: '18:00', views: '760K' },
-    { id: 'av2', title: 'Average Shortcut Methods | Aptitude', channel: 'Anil Kumar', videoId: 'wVJE4pyZAac', thumbnail: 'https://img.youtube.com/vi/wVJE4pyZAac/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=wVJE4pyZAac', duration: '22:10', views: '490K' },
-    { id: 'av3', title: 'Averages Practice Questions Solved', channel: 'CareerRide', videoId: 'jBPO7Vs7dLk', thumbnail: 'https://img.youtube.com/vi/jBPO7Vs7dLk/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=jBPO7Vs7dLk', duration: '15:30', views: '340K' },
-    { id: 'av4', title: 'Average - Complete Chapter for Exams', channel: 'Study Smart', videoId: 'I3j8Fl0RWds', thumbnail: 'https://img.youtube.com/vi/I3j8Fl0RWds/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=I3j8Fl0RWds', duration: '28:00', views: '510K' }
+  "averages": [
+    {
+      "id": "averages_1",
+      "title": "Averages - Shortcuts & Tricks for Placement Tests, Job Interviews & Exams",
+      "channel": "CareerRide",
+      "videoId": "rhSxQ4ieAYc",
+      "thumbnail": "https://img.youtube.com/vi/rhSxQ4ieAYc/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=rhSxQ4ieAYc",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "averages_2",
+      "title": "AVERAGE _ LESSON - 1 # INTRODUCTION",
+      "channel": "Feel Free to Learn",
+      "videoId": "Qx73gH1kdfw",
+      "thumbnail": "https://img.youtube.com/vi/Qx73gH1kdfw/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=Qx73gH1kdfw",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "averages_3",
+      "title": "AVERAGE _ LESSON - 2 # BASIC QUESTIONS",
+      "channel": "Feel Free to Learn",
+      "videoId": "w5Vel3L0OwY",
+      "thumbnail": "https://img.youtube.com/vi/w5Vel3L0OwY/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=w5Vel3L0OwY",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "averages_4",
+      "title": "Average Short Tricks in Hindi | Average Questions/Problems",
+      "channel": "Dear Sir",
+      "videoId": "mzGZfv63oD4",
+      "thumbnail": "https://img.youtube.com/vi/mzGZfv63oD4/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=mzGZfv63oD4",
+      "duration": "Lesson",
+      "views": "High Quality"
+    }
   ],
-  'ages': [
-    { id: 'age1', title: 'Problems on Ages - All Types', channel: 'TalentSprint Aptitude', videoId: 'J_gFBXcz0Mc', thumbnail: 'https://img.youtube.com/vi/J_gFBXcz0Mc/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=J_gFBXcz0Mc', duration: '20:40', views: '680K' },
-    { id: 'age2', title: 'Ages Tricks | Present Age Future Age', channel: 'Anil Kumar', videoId: 'NqOZ2rJChBU', thumbnail: 'https://img.youtube.com/vi/NqOZ2rJChBU/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=NqOZ2rJChBU', duration: '17:25', views: '430K' },
-    { id: 'age3', title: 'Problems on Ages Solved | 25 Questions', channel: 'CareerRide', videoId: 'M_QZK5PLv-E', thumbnail: 'https://img.youtube.com/vi/M_QZK5PLv-E/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=M_QZK5PLv-E', duration: '25:00', views: '310K' },
-    { id: 'age4', title: 'Ages - Shortcut Formula Tricks', channel: 'Study Smart', videoId: 'ABhR6a1sPKM', thumbnail: 'https://img.youtube.com/vi/ABhR6a1sPKM/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=ABhR6a1sPKM', duration: '22:15', views: '380K' }
+  "ages": [
+    {
+      "id": "ages_1",
+      "title": "Age Problems Tricks and Shortcuts | Maths Tricks | imran sir maths",
+      "channel": "imran sir maths",
+      "videoId": "PcmYrI-z118",
+      "thumbnail": "https://img.youtube.com/vi/PcmYrI-z118/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=PcmYrI-z118",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "ages_2",
+      "title": "Problems on Ages - Shortcuts & Tricks for Placement Tests, Job Interviews & Exams",
+      "channel": "CareerRide",
+      "videoId": "tJHl73PBnwY",
+      "thumbnail": "https://img.youtube.com/vi/tJHl73PBnwY/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=tJHl73PBnwY",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "ages_3",
+      "title": "Aptitude Made Easy   Problems on Ages full series, Learn maths #StayHome",
+      "channel": "Jobs & Careers",
+      "videoId": "7pg8aQNPkcE",
+      "thumbnail": "https://img.youtube.com/vi/7pg8aQNPkcE/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=7pg8aQNPkcE",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "ages_4",
+      "title": "Problem on Ages Trick In Hindi| Age Problem Shortcut | Math Trick | #shorts",
+      "channel": "TUMI JITBE ",
+      "videoId": "6vX52cyJ1M8",
+      "thumbnail": "https://img.youtube.com/vi/6vX52cyJ1M8/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=6vX52cyJ1M8",
+      "duration": "Lesson",
+      "views": "High Quality"
+    }
   ],
-  'probability': [
-    { id: 'pr1', title: 'Probability - Complete Chapter Explained', channel: 'TalentSprint Aptitude', videoId: '9OKbbLHM1-o', thumbnail: 'https://img.youtube.com/vi/9OKbbLHM1-o/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=9OKbbLHM1-o', duration: '32:20', views: '1.0M' },
-    { id: 'pr2', title: 'Probability Tricks and Problems', channel: 'Anil Kumar', videoId: 'eATSHh1BFME', thumbnail: 'https://img.youtube.com/vi/eATSHh1BFME/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=eATSHh1BFME', duration: '28:45', views: '670K' },
-    { id: 'pr3', title: 'Probability - Cards, Dice, Coins', channel: 'CareerRide', videoId: '6Gkr5DLT9Xs', thumbnail: 'https://img.youtube.com/vi/6Gkr5DLT9Xs/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=6Gkr5DLT9Xs', duration: '24:15', views: '520K' },
-    { id: 'pr4', title: 'Probability Practice Set | All Types', channel: 'Unacademy CAT', videoId: 'dZJPEFwMJYk', thumbnail: 'https://img.youtube.com/vi/dZJPEFwMJYk/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=dZJPEFwMJYk', duration: '45:00', views: '840K' }
+  "probability": [
+    {
+      "id": "probability_1",
+      "title": "Probability - Shortcuts & Tricks for 2026 Placement Tests, Job Interviews & Exams",
+      "channel": "CareerRide",
+      "videoId": "ximxxERGSUc",
+      "thumbnail": "https://img.youtube.com/vi/ximxxERGSUc/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=ximxxERGSUc",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "probability_2",
+      "title": "Probability Trick | Probability Aptitude Tricks | Probability DSSSB/CLASS 10/CLASS 12/Short Trick",
+      "channel": "Dear Sir",
+      "videoId": "mYbdGLnTd4c",
+      "thumbnail": "https://img.youtube.com/vi/mYbdGLnTd4c/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=mYbdGLnTd4c",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "probability_3",
+      "title": "Arithmetic fast trick l Probability l Problem-1 l #SSC #BANKING #UPSC l prelims level #mathstricks",
+      "channel": "Exam Affairs",
+      "videoId": "CkRNr2lCNlQ",
+      "thumbnail": "https://img.youtube.com/vi/CkRNr2lCNlQ/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=CkRNr2lCNlQ",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "probability_4",
+      "title": "SSC Maths: Complete Probability (प्रायिकता) Formula Cheat Sheet & Short Tricks",
+      "channel": "Smart Study Hub",
+      "videoId": "16_QUguNHyo",
+      "thumbnail": "https://img.youtube.com/vi/16_QUguNHyo/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=16_QUguNHyo",
+      "duration": "Lesson",
+      "views": "High Quality"
+    }
   ],
-  'permutations and combinations': [
-    { id: 'pc1b', title: 'Permutation & Combination Full Tutorial', channel: 'TalentSprint Aptitude', videoId: 'hRj_VGGcvXU', thumbnail: 'https://img.youtube.com/vi/hRj_VGGcvXU/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=hRj_VGGcvXU', duration: '36:10', views: '1.2M' },
-    { id: 'pc2b', title: 'P&C Tricks - nPr and nCr Explained', channel: 'Anil Kumar', videoId: 'XD2OKWFGjH4', thumbnail: 'https://img.youtube.com/vi/XD2OKWFGjH4/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=XD2OKWFGjH4', duration: '30:30', views: '750K' },
-    { id: 'pc3b', title: 'Permutations Combinations Practice', channel: 'CareerRide', videoId: 'wPVNkZKBPvc', thumbnail: 'https://img.youtube.com/vi/wPVNkZKBPvc/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=wPVNkZKBPvc', duration: '22:00', views: '480K' },
-    { id: 'pc4b', title: 'P&C - 50 Problems for Exam Prep', channel: 'Study Smart', videoId: 'jqTMWdKQqTM', thumbnail: 'https://img.youtube.com/vi/jqTMWdKQqTM/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=jqTMWdKQqTM', duration: '52:00', views: '620K' }
+  "permutations and combinations": [
+    {
+      "id": "permutations_and_combinations_1",
+      "title": "Permutation and Combination Aptitude Tricks  | Circular Permutation | Shortcut/Tricks",
+      "channel": "Dr.Gajendra Purohit - GATE / IIT JAM / CSIR NET",
+      "videoId": "gT_riJtb1xg",
+      "thumbnail": "https://img.youtube.com/vi/gT_riJtb1xg/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=gT_riJtb1xg",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "permutations_and_combinations_2",
+      "title": "Permutation and Combination - Shortcuts & Tricks for 2026 Placement Tests, Job Interviews & Exams",
+      "channel": "CareerRide",
+      "videoId": "ETiRE7N7pEI",
+      "thumbnail": "https://img.youtube.com/vi/ETiRE7N7pEI/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=ETiRE7N7pEI",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "permutations_and_combinations_3",
+      "title": "PERMUTATION AND COMBINATION  (P AND C) SHORTCUT//TRICKS FOR NDA/JEE/AIRFOCRE GROUP X/ CLASS 11 NCERT",
+      "channel": "Unknown teacher",
+      "videoId": "V7BWIgSSI6g",
+      "thumbnail": "https://img.youtube.com/vi/V7BWIgSSI6g/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=V7BWIgSSI6g",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "permutations_and_combinations_4",
+      "title": "PERMUTATION AND COMBINATION  (P AND C) SHORTCUT METHOD FOR NDA/JEE/AIRFOCRE GROUP X/ CLASS 11 NCERT",
+      "channel": "Unknown teacher",
+      "videoId": "gy2LQZAY_Fw",
+      "thumbnail": "https://img.youtube.com/vi/gy2LQZAY_Fw/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=gy2LQZAY_Fw",
+      "duration": "Lesson",
+      "views": "High Quality"
+    }
   ],
-  'data interpretation': [
-    { id: 'di1', title: 'Data Interpretation - Complete Guide', channel: 'TalentSprint Aptitude', videoId: 'hPHsqG9dCBs', thumbnail: 'https://img.youtube.com/vi/hPHsqG9dCBs/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=hPHsqG9dCBs', duration: '40:00', views: '1.6M' },
-    { id: 'di2', title: 'DI - Bar Graph, Pie Chart, Table', channel: 'Anil Kumar', videoId: 'Z9yJMeyLxkA', thumbnail: 'https://img.youtube.com/vi/Z9yJMeyLxkA/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=Z9yJMeyLxkA', duration: '35:20', views: '980K' },
-    { id: 'di3', title: 'Data Interpretation Practice Questions', channel: 'CareerRide', videoId: 'PZ5s0OBgblk', thumbnail: 'https://img.youtube.com/vi/PZ5s0OBgblk/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=PZ5s0OBgblk', duration: '28:45', views: '720K' },
-    { id: 'di4', title: 'DI Shortcut Methods for Bank Exams', channel: 'Unacademy CAT', videoId: 'GsuhL6Tk_7E', thumbnail: 'https://img.youtube.com/vi/GsuhL6Tk_7E/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=GsuhL6Tk_7E', duration: '48:30', views: '1.1M' }
+  "data interpretation": [
+    {
+      "id": "data_interpretation_1",
+      "title": "Data interpretation Tricks | Pie Chart | How to Solve Data interpretation Questions Easily ",
+      "channel": "imran sir maths",
+      "videoId": "xtj2ylwGwrg",
+      "thumbnail": "https://img.youtube.com/vi/xtj2ylwGwrg/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=xtj2ylwGwrg",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "data_interpretation_2",
+      "title": "DATA INTERPRETATION/ HARD QUESTION/ EASY Shortcuts| SOLVE IN SEC QUESTION for SSC CGL,CHSL,CPO,GD,JE",
+      "channel": "CP EDUCARE",
+      "videoId": "StZum3dAAGk",
+      "thumbnail": "https://img.youtube.com/vi/StZum3dAAGk/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=StZum3dAAGk",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "data_interpretation_3",
+      "title": "GATE 2027 Quantitative Aptitude – Data Interpretation | Complete Formula & Shortcut Tricks",
+      "channel": "EDUZ LEARNING ",
+      "videoId": "xFVbd3dA6GM",
+      "thumbnail": "https://img.youtube.com/vi/xFVbd3dA6GM/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=xFVbd3dA6GM",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "data_interpretation_4",
+      "title": "Data Interpretation DI । Ugc Net Paper-1 Important & Expected Questions MCQ Topics #ugcnet #netjrf",
+      "channel": "🇮🇳 Easy Notes 4u Online study ",
+      "videoId": "xWPqxow9MU8",
+      "thumbnail": "https://img.youtube.com/vi/xWPqxow9MU8/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=xWPqxow9MU8",
+      "duration": "Lesson",
+      "views": "High Quality"
+    }
   ],
-  'logical reasoning': [
-    { id: 'lr1', title: 'Logical Reasoning - Complete Chapter', channel: 'TalentSprint Aptitude', videoId: 'WfbwrJFTMBE', thumbnail: 'https://img.youtube.com/vi/WfbwrJFTMBE/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=WfbwrJFTMBE', duration: '38:00', views: '1.8M' },
-    { id: 'lr2', title: 'Logical Reasoning Tricks & Strategies', channel: 'Anil Kumar', videoId: 'ow5vlJMFQMQ', thumbnail: 'https://img.youtube.com/vi/ow5vlJMFQMQ/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=ow5vlJMFQMQ', duration: '32:10', views: '1.0M' },
-    { id: 'lr3', title: 'Logical Reasoning - 40 Questions Solved', channel: 'CareerRide', videoId: 'JRYlCvNHDSw', thumbnail: 'https://img.youtube.com/vi/JRYlCvNHDSw/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=JRYlCvNHDSw', duration: '42:30', views: '860K' },
-    { id: 'lr4', title: 'Reasoning for Placements', channel: 'Study Smart', videoId: 'A8OB-f2_hVs', thumbnail: 'https://img.youtube.com/vi/A8OB-f2_hVs/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=A8OB-f2_hVs', duration: '50:00', views: '1.3M' }
+  "logical reasoning": [
+    {
+      "id": "logical_reasoning_1",
+      "title": "Coding Decoding Tricks | Logical Reasoning Questions | Bank Exams #ytshorts #codingdecodingtricks",
+      "channel": "Nyra Academy ",
+      "videoId": "47rXPJ62sDE",
+      "thumbnail": "https://img.youtube.com/vi/47rXPJ62sDE/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=47rXPJ62sDE",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "logical_reasoning_2",
+      "title": "Reasoning Shortcut Tricks",
+      "channel": "Guinness And Math Guy",
+      "videoId": "LzzQRu4x8rg",
+      "thumbnail": "https://img.youtube.com/vi/LzzQRu4x8rg/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=LzzQRu4x8rg",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "logical_reasoning_3",
+      "title": "Dice 🎲 रीज़निंग | Missing Number| Reasoning Tricks for SSC CGL CHSL MTS CRPF RRB |",
+      "channel": "TUMI JITBE ",
+      "videoId": "aqx1IWu4Ftk",
+      "thumbnail": "https://img.youtube.com/vi/aqx1IWu4Ftk/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=aqx1IWu4Ftk",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "logical_reasoning_4",
+      "title": "2 Seconds Trick for Reasoning Missing Number! 😱 SSC CGL, CHSL, RRB NTPC | Lakshmi Mam #shorts #yt",
+      "channel": "Focus40 Academy",
+      "videoId": "neGSEr78mOE",
+      "thumbnail": "https://img.youtube.com/vi/neGSEr78mOE/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=neGSEr78mOE",
+      "duration": "Lesson",
+      "views": "High Quality"
+    }
   ],
-  'verbal ability': [
-    { id: 'va1', title: 'Verbal Ability - Reading Comprehension', channel: 'TalentSprint Aptitude', videoId: 'bXv_uuHIaEY', thumbnail: 'https://img.youtube.com/vi/bXv_uuHIaEY/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=bXv_uuHIaEY', duration: '30:15', views: '920K' },
-    { id: 'va2', title: 'English Verbal Ability - Full Chapter', channel: 'Anil Kumar', videoId: 'pLDp-Zf7VkE', thumbnail: 'https://img.youtube.com/vi/pLDp-Zf7VkE/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=pLDp-Zf7VkE', duration: '26:40', views: '650K' },
-    { id: 'va3', title: 'Grammar & Vocabulary for Aptitude', channel: 'CareerRide', videoId: 'fPtGpTuiXmY', thumbnail: 'https://img.youtube.com/vi/fPtGpTuiXmY/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=fPtGpTuiXmY', duration: '22:20', views: '480K' },
-    { id: 'va4', title: 'Verbal Ability Practice - Placement Prep', channel: 'Study Smart', videoId: 'T4KZAOS4_j8', thumbnail: 'https://img.youtube.com/vi/T4KZAOS4_j8/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=T4KZAOS4_j8', duration: '35:00', views: '570K' }
+  "verbal ability": [
+    {
+      "id": "verbal_ability_1",
+      "title": "Articles in Verbal Ability - Concept, Tips & Practice Exercises for Placement Tests, Jobs & Exams",
+      "channel": "CareerRide",
+      "videoId": "TNkq01wrqUg",
+      "thumbnail": "https://img.youtube.com/vi/TNkq01wrqUg/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=TNkq01wrqUg",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "verbal_ability_2",
+      "title": "Omission of Articles in Verbal Ability - Concept, Tips & Practice for Placement Tests, Jobs & Exams",
+      "channel": "CareerRide",
+      "videoId": "5ph-2SerrlY",
+      "thumbnail": "https://img.youtube.com/vi/5ph-2SerrlY/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=5ph-2SerrlY",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "verbal_ability_3",
+      "title": "MBA CET Verbal Section Tips and Tricks | JBIMS | MBA CET",
+      "channel": "The Top Percentile - MBA",
+      "videoId": "hZzwJYcVMkE",
+      "thumbnail": "https://img.youtube.com/vi/hZzwJYcVMkE/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=hZzwJYcVMkE",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "verbal_ability_4",
+      "title": "Verbal Analogy Quiz | Practice Question 3 | Verbal Ability #reasoning",
+      "channel": "Happy Professional Training ",
+      "videoId": "5siNMqGECxI",
+      "thumbnail": "https://img.youtube.com/vi/5siNMqGECxI/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=5siNMqGECxI",
+      "duration": "Lesson",
+      "views": "High Quality"
+    }
   ],
-  'coding decoding': [
-    { id: 'cd1', title: 'Coding-Decoding Complete Chapter', channel: 'TalentSprint Aptitude', videoId: 'PmxhWMoOqGs', thumbnail: 'https://img.youtube.com/vi/PmxhWMoOqGs/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=PmxhWMoOqGs', duration: '26:00', views: '780K' },
-    { id: 'cd2', title: 'Coding Decoding Tricks & Shortcuts', channel: 'Anil Kumar', videoId: '9EaROWV8bXM', thumbnail: 'https://img.youtube.com/vi/9EaROWV8bXM/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=9EaROWV8bXM', duration: '20:30', views: '520K' },
-    { id: 'cd3', title: 'Coding Decoding 30 Questions Solved', channel: 'CareerRide', videoId: 'BPiB1HdkTgo', thumbnail: 'https://img.youtube.com/vi/BPiB1HdkTgo/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=BPiB1HdkTgo', duration: '18:45', views: '390K' },
-    { id: 'cd4', title: 'Letter Coding Number Coding Tricks', channel: 'Study Smart', videoId: 'RCiSaZbNInw', thumbnail: 'https://img.youtube.com/vi/RCiSaZbNInw/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=RCiSaZbNInw', duration: '24:10', views: '430K' }
+  "coding decoding": [
+    {
+      "id": "coding_decoding_1",
+      "title": "Coding Decoding Reasoning Trick | Reasoning Trick | Maths Trick | imran sir maths",
+      "channel": "imran sir maths",
+      "videoId": "5uKXoKYV0MM",
+      "thumbnail": "https://img.youtube.com/vi/5uKXoKYV0MM/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=5uKXoKYV0MM",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "coding_decoding_2",
+      "title": "Coding and Decoding - Tricks & Shortcuts for 2026 - 2027 Placement tests, Job Interviews & Exams",
+      "channel": "CareerRide",
+      "videoId": "wwN3mJ-b4FY",
+      "thumbnail": "https://img.youtube.com/vi/wwN3mJ-b4FY/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=wwN3mJ-b4FY",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "coding_decoding_3",
+      "title": "Coding Decoding Question | Reasoning Tricks #codingdecodingtricks #reasoningtricks",
+      "channel": "Nyra Academy ",
+      "videoId": "Ptafuxy0mDA",
+      "thumbnail": "https://img.youtube.com/vi/Ptafuxy0mDA/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=Ptafuxy0mDA",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "coding_decoding_4",
+      "title": "Coding Decoding Tricks | Logical Reasoning Questions | Bank Exams #ytshorts #codingdecodingtricks",
+      "channel": "Nyra Academy ",
+      "videoId": "47rXPJ62sDE",
+      "thumbnail": "https://img.youtube.com/vi/47rXPJ62sDE/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=47rXPJ62sDE",
+      "duration": "Lesson",
+      "views": "High Quality"
+    }
   ],
-  'blood relations': [
-    { id: 'br1', title: 'Blood Relations - Complete Tutorial', channel: 'TalentSprint Aptitude', videoId: 'EqBFy8e0ELQ', thumbnail: 'https://img.youtube.com/vi/EqBFy8e0ELQ/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=EqBFy8e0ELQ', duration: '22:10', views: '690K' },
-    { id: 'br2', title: 'Blood Relations Tricks | Family Tree', channel: 'Anil Kumar', videoId: 'Qbu8qO7g_no', thumbnail: 'https://img.youtube.com/vi/Qbu8qO7g_no/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=Qbu8qO7g_no', duration: '18:45', views: '450K' },
-    { id: 'br3', title: 'Blood Relations 25 Problems Solved', channel: 'CareerRide', videoId: 'c1RR5f7MrNo', thumbnail: 'https://img.youtube.com/vi/c1RR5f7MrNo/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=c1RR5f7MrNo', duration: '20:00', views: '320K' },
-    { id: 'br4', title: 'Family Relationship Problems | Aptitude', channel: 'Study Smart', videoId: 'BsBRSylCOG0', thumbnail: 'https://img.youtube.com/vi/BsBRSylCOG0/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=BsBRSylCOG0', duration: '25:30', views: '370K' }
+  "blood relations": [
+    {
+      "id": "blood_relations_1",
+      "title": "Blood Relations - Tricks & Shortcuts for 2026 - 2027 Placement tests, Job Interviews & Exams",
+      "channel": "CareerRide",
+      "videoId": "LRdLhfDupMU",
+      "thumbnail": "https://img.youtube.com/vi/LRdLhfDupMU/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=LRdLhfDupMU",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "blood_relations_2",
+      "title": "Blood Reasoning Trick | Maths Trick |Reasoning Trick | imran sir maths",
+      "channel": "imran sir maths",
+      "videoId": "tPqrZh56tqI",
+      "thumbnail": "https://img.youtube.com/vi/tPqrZh56tqI/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=tPqrZh56tqI",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "blood_relations_3",
+      "title": "Blood Relation Reasoning Tricks | Reasoning Blood Relation | Trick/Questions/Classes in Hindi",
+      "channel": "Dear Sir",
+      "videoId": "eFykHutJRzc",
+      "thumbnail": "https://img.youtube.com/vi/eFykHutJRzc/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=eFykHutJRzc",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "blood_relations_4",
+      "title": "Easy tricks for Blood Relationship | Harjeet Ma'am | Success Tree",
+      "channel": "Success Tree - Online Classes",
+      "videoId": "d6LxMKs5V6U",
+      "thumbnail": "https://img.youtube.com/vi/d6LxMKs5V6U/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=d6LxMKs5V6U",
+      "duration": "Lesson",
+      "views": "High Quality"
+    }
   ],
-  'syllogisms': [
-    { id: 'sy1', title: 'Syllogism - All Rules and Types', channel: 'TalentSprint Aptitude', videoId: 'HA5SHjHkjgE', thumbnail: 'https://img.youtube.com/vi/HA5SHjHkjgE/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=HA5SHjHkjgE', duration: '28:20', views: '850K' },
-    { id: 'sy2', title: 'Syllogism Venn Diagram Trick', channel: 'Anil Kumar', videoId: 'cGYVYPJhS0g', thumbnail: 'https://img.youtube.com/vi/cGYVYPJhS0g/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=cGYVYPJhS0g', duration: '24:15', views: '610K' },
-    { id: 'sy3', title: 'Syllogism Practice - 35 Questions', channel: 'CareerRide', videoId: 'GHMsZgSwO2Y', thumbnail: 'https://img.youtube.com/vi/GHMsZgSwO2Y/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=GHMsZgSwO2Y', duration: '30:00', views: '440K' },
-    { id: 'sy4', title: 'Syllogism for Bank PO & SSC', channel: 'Unacademy CAT', videoId: 'M85vHoT7bqg', thumbnail: 'https://img.youtube.com/vi/M85vHoT7bqg/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=M85vHoT7bqg', duration: '40:00', views: '720K' }
+  "syllogisms": [
+    {
+      "id": "syllogisms_1",
+      "title": "Syllogism Without VENN Diagram | Solve Questions Without Pen | Syllogism Short Tricks",
+      "channel": "Digital Tyari",
+      "videoId": "YhQbZMK58VU",
+      "thumbnail": "https://img.youtube.com/vi/YhQbZMK58VU/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=YhQbZMK58VU",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "syllogisms_2",
+      "title": "Syllogism - Tricks & Shortcuts for 2026 - 2027 Placement tests, Job Interviews & Exams",
+      "channel": "CareerRide",
+      "videoId": "knFLfSr35wU",
+      "thumbnail": "https://img.youtube.com/vi/knFLfSr35wU/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=knFLfSr35wU",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "syllogisms_3",
+      "title": "Easy & Fast Syllogism Reasoning Tricks | PSI-STI-ASO Combine Group B Exam | By Sandip Patil Sir",
+      "channel": "Reliable Academy",
+      "videoId": "k0VqAqE-JGg",
+      "thumbnail": "https://img.youtube.com/vi/k0VqAqE-JGg/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=k0VqAqE-JGg",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "syllogisms_4",
+      "title": "SBI PO 2025 Syllogism Reasoning Tricks | SBI PO Syllogism ( Never/No Possibility) Practice Question",
+      "channel": "EduTap Banking Exams",
+      "videoId": "Y1_DUrpsXgI",
+      "thumbnail": "https://img.youtube.com/vi/Y1_DUrpsXgI/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=Y1_DUrpsXgI",
+      "duration": "Lesson",
+      "views": "High Quality"
+    }
   ],
-  'directions': [
-    { id: 'dir1', title: 'Directions & Distance - Complete Chapter', channel: 'TalentSprint Aptitude', videoId: 'Tzo1j_qMz-M', thumbnail: 'https://img.youtube.com/vi/Tzo1j_qMz-M/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=Tzo1j_qMz-M', duration: '18:40', views: '560K' },
-    { id: 'dir2', title: 'Direction Sense Tricks | Aptitude', channel: 'Anil Kumar', videoId: 'FeqcAzunYKA', thumbnail: 'https://img.youtube.com/vi/FeqcAzunYKA/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=FeqcAzunYKA', duration: '15:20', views: '380K' },
-    { id: 'dir3', title: 'Direction Problems Solved - 20 Questions', channel: 'CareerRide', videoId: 'g7JbRWy1MaA', thumbnail: 'https://img.youtube.com/vi/g7JbRWy1MaA/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=g7JbRWy1MaA', duration: '16:00', views: '290K' },
-    { id: 'dir4', title: 'Navigation & Direction Aptitude Problems', channel: 'Study Smart', videoId: 'b8Ss1BRWAl4', thumbnail: 'https://img.youtube.com/vi/b8Ss1BRWAl4/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=b8Ss1BRWAl4', duration: '20:00', views: '330K' }
+  "directions": [
+    {
+      "id": "directions_1",
+      "title": "Directions no diagram trick by chandan Venna sir #chandan_logics #chandan_venna_fan_club #reasoning",
+      "channel": "Chandan Logics - English",
+      "videoId": "5f5CGE67y7M",
+      "thumbnail": "https://img.youtube.com/vi/5f5CGE67y7M/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=5f5CGE67y7M",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "directions_2",
+      "title": "Direction Sense Questions | CSAT Reasoning Important Topics | UPSC CSAT Preparation 2025 | EduTap",
+      "channel": "EduTap - UPSC",
+      "videoId": "wkhnEb2FEiY",
+      "thumbnail": "https://img.youtube.com/vi/wkhnEb2FEiY/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=wkhnEb2FEiY",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "directions_3",
+      "title": "Direction Test Tricks | Logical Reasoning Tricks #viral #directiontest #shorts #reasoning",
+      "channel": "Nyra Academy ",
+      "videoId": "8mCRlyfYn5Y",
+      "thumbnail": "https://img.youtube.com/vi/8mCRlyfYn5Y/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=8mCRlyfYn5Y",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "directions_4",
+      "title": "Direction Sense Test | Reasoning Tricks || Direction problems ||GK ||GK with prima|",
+      "channel": "GK with PRIMA",
+      "videoId": "-0HMAIQvYqA",
+      "thumbnail": "https://img.youtube.com/vi/-0HMAIQvYqA/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=-0HMAIQvYqA",
+      "duration": "Lesson",
+      "views": "High Quality"
+    }
   ],
-  'clocks': [
-    { id: 'cl1', title: 'Clock Problems - Angle and Time', channel: 'TalentSprint Aptitude', videoId: 'JJaJCKAKjLg', thumbnail: 'https://img.youtube.com/vi/JJaJCKAKjLg/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=JJaJCKAKjLg', duration: '24:30', views: '720K' },
-    { id: 'cl2', title: 'Clock Tricks - Coincidence, Angle', channel: 'Anil Kumar', videoId: 'w3gXZAE3MVw', thumbnail: 'https://img.youtube.com/vi/w3gXZAE3MVw/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=w3gXZAE3MVw', duration: '20:15', views: '480K' },
-    { id: 'cl3', title: 'Clock Problems 30 Questions Solved', channel: 'CareerRide', videoId: 'LhUNLtTEzwg', thumbnail: 'https://img.youtube.com/vi/LhUNLtTEzwg/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=LhUNLtTEzwg', duration: '28:00', views: '390K' },
-    { id: 'cl4', title: 'Clocks & Calendar Aptitude Shortcut', channel: 'Study Smart', videoId: 'AaYpRyh5MCE', thumbnail: 'https://img.youtube.com/vi/AaYpRyh5MCE/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=AaYpRyh5MCE', duration: '32:00', views: '430K' }
+  "clocks": [
+    {
+      "id": "clocks_1",
+      "title": "Clock Formula Short Trick | Clock Angle Degree Short Trick | Clock Reasoning Aptitude",
+      "channel": "LOGICALLY YOURS",
+      "videoId": "UPmxMgRD1II",
+      "thumbnail": "https://img.youtube.com/vi/UPmxMgRD1II/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=UPmxMgRD1II",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "clocks_2",
+      "title": "That is REALLY QUICK II Angle Between Hands of Clock II Shortest Trick #youtubeshorts #clock #angle",
+      "channel": "Suresh Aggarwal",
+      "videoId": "BtJZwPo9xxI",
+      "thumbnail": "https://img.youtube.com/vi/BtJZwPo9xxI/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=BtJZwPo9xxI",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "clocks_3",
+      "title": "Clock Reasoning..⏰🕕 Trick Formula #shorts #notes #reasoning #youtubeshorts",
+      "channel": "Nidhi Kumari ",
+      "videoId": "FRAax3d0j18",
+      "thumbnail": "https://img.youtube.com/vi/FRAax3d0j18/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=FRAax3d0j18",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "clocks_4",
+      "title": "At what time  both minute and hour hand coincide? ||clock trick",
+      "channel": "MANDAL EDUCATIONAL JET",
+      "videoId": "e_62O4G_ObE",
+      "thumbnail": "https://img.youtube.com/vi/e_62O4G_ObE/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=e_62O4G_ObE",
+      "duration": "Lesson",
+      "views": "High Quality"
+    }
   ],
-  'calendars': [
-    { id: 'cal1', title: 'Calendar Problems - Odd Days Method', channel: 'TalentSprint Aptitude', videoId: 'ERl8L1nopRI', thumbnail: 'https://img.youtube.com/vi/ERl8L1nopRI/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=ERl8L1nopRI', duration: '20:00', views: '610K' },
-    { id: 'cal2', title: 'Calendar Tricks - Day of the Week', channel: 'Anil Kumar', videoId: 'F6RhVfN9oWM', thumbnail: 'https://img.youtube.com/vi/F6RhVfN9oWM/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=F6RhVfN9oWM', duration: '18:30', views: '390K' },
-    { id: 'cal3', title: 'Calendar Problems Solved | 20 Questions', channel: 'CareerRide', videoId: 'UNXTiS_I8uo', thumbnail: 'https://img.youtube.com/vi/UNXTiS_I8uo/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=UNXTiS_I8uo', duration: '22:00', views: '310K' },
-    { id: 'cal4', title: 'Dates, Days, Calendars - Formula Method', channel: 'Study Smart', videoId: 'G5Q3JUHNuCA', thumbnail: 'https://img.youtube.com/vi/G5Q3JUHNuCA/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=G5Q3JUHNuCA', duration: '24:15', views: '350K' }
+  "calendars": [
+    {
+      "id": "calendars_1",
+      "title": "Calendar Tricks | Reasoning Tricks | Maths Tricks | imran sir maths",
+      "channel": "imran sir maths",
+      "videoId": "T6vzmw96Lms",
+      "thumbnail": "https://img.youtube.com/vi/T6vzmw96Lms/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=T6vzmw96Lms",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "calendars_2",
+      "title": "Aptitude Made Easy   Problems on Calendar full series, Learn maths #StayHome",
+      "channel": "Jobs & Careers",
+      "videoId": "fa0x2KkKPgk",
+      "thumbnail": "https://img.youtube.com/vi/fa0x2KkKPgk/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=fa0x2KkKPgk",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "calendars_3",
+      "title": "Calendar - Tricks & Shortcuts for Placement tests, Job Interviews & Exams",
+      "channel": "CareerRide",
+      "videoId": "oxc4G14nyUY",
+      "thumbnail": "https://img.youtube.com/vi/oxc4G14nyUY/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=oxc4G14nyUY",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "calendars_4",
+      "title": "Calendar | Calendar Shortcuts Tricks | Reasoning Classes| Calendar Reasoning for SSC CGL GD",
+      "channel": "TUMI JITBE ",
+      "videoId": "F7-PMSTrcRQ",
+      "thumbnail": "https://img.youtube.com/vi/F7-PMSTrcRQ/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=F7-PMSTrcRQ",
+      "duration": "Lesson",
+      "views": "High Quality"
+    }
   ],
-  'mixtures and alligation': [
-    { id: 'ma1', title: 'Mixtures and Alligation - Full Chapter', channel: 'TalentSprint Aptitude', videoId: 'Zv6sDn6fkBo', thumbnail: 'https://img.youtube.com/vi/Zv6sDn6fkBo/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=Zv6sDn6fkBo', duration: '26:10', views: '740K' },
-    { id: 'ma2', title: 'Alligation Method - Rule of Mixture', channel: 'Anil Kumar', videoId: 'U2i5n_Bp1IE', thumbnail: 'https://img.youtube.com/vi/U2i5n_Bp1IE/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=U2i5n_Bp1IE', duration: '22:45', views: '480K' },
-    { id: 'ma3', title: 'Mixtures Problems Solved | 25 Questions', channel: 'CareerRide', videoId: 'ZzW6B8n3P7o', thumbnail: 'https://img.youtube.com/vi/ZzW6B8n3P7o/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=ZzW6B8n3P7o', duration: '24:00', views: '360K' },
-    { id: 'ma4', title: 'Alligation Shortcut - 10 Questions', channel: 'Study Smart', videoId: 'X1A0BoiPwXo', thumbnail: 'https://img.youtube.com/vi/X1A0BoiPwXo/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=X1A0BoiPwXo', duration: '18:30', views: '290K' }
+  "mixtures and alligation": [
+    {
+      "id": "mixtures_and_alligation_1",
+      "title": "Mixture and Alligation - Shortcuts & Tricks for 2026 Placement Tests, Job Interviews & Exams",
+      "channel": "CareerRide",
+      "videoId": "OKSJDDAyqP0",
+      "thumbnail": "https://img.youtube.com/vi/OKSJDDAyqP0/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=OKSJDDAyqP0",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "mixtures_and_alligation_2",
+      "title": "Alligations and Mixtures Tricks | Mixture and Alligations Concept/Questions/Problems/Solutions",
+      "channel": "Dear Sir",
+      "videoId": "gA0EFrv9aL0",
+      "thumbnail": "https://img.youtube.com/vi/gA0EFrv9aL0/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=gA0EFrv9aL0",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "mixtures_and_alligation_3",
+      "title": "Alligations and Mixtures Tricks | Mixture and Alligations Concepts/Questions/Problems/Solutions",
+      "channel": "imran sir maths",
+      "videoId": "Xsg6-1c-IGI",
+      "thumbnail": "https://img.youtube.com/vi/Xsg6-1c-IGI/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=Xsg6-1c-IGI",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "mixtures_and_alligation_4",
+      "title": "Fast Calculation Short Trick II Mixture Problem II Solve in 5 Seconds #quant #mixture #youtubeshorts",
+      "channel": "Suresh Aggarwal",
+      "videoId": "zQBFpxqI-84",
+      "thumbnail": "https://img.youtube.com/vi/zQBFpxqI-84/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=zQBFpxqI-84",
+      "duration": "Lesson",
+      "views": "High Quality"
+    }
   ],
-  'pipes and cisterns': [
-    { id: 'pip1', title: 'Pipes and Cisterns Complete Chapter', channel: 'TalentSprint Aptitude', videoId: 'YN5-5uAQEBw', thumbnail: 'https://img.youtube.com/vi/YN5-5uAQEBw/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=YN5-5uAQEBw', duration: '22:00', views: '680K' },
-    { id: 'pip2', title: 'Pipes & Cisterns Tricks | Aptitude', channel: 'Anil Kumar', videoId: 'j95v7wJY7KA', thumbnail: 'https://img.youtube.com/vi/j95v7wJY7KA/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=j95v7wJY7KA', duration: '18:20', views: '430K' },
-    { id: 'pip3', title: 'Pipes Cisterns 20 Problems Solved', channel: 'CareerRide', videoId: 'Sb3DPjDBpqA', thumbnail: 'https://img.youtube.com/vi/Sb3DPjDBpqA/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=Sb3DPjDBpqA', duration: '20:30', views: '310K' },
-    { id: 'pip4', title: 'Pipes and Tanks - Shortcut Methods', channel: 'Study Smart', videoId: 'j4HGSNyEkWI', thumbnail: 'https://img.youtube.com/vi/j4HGSNyEkWI/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=j4HGSNyEkWI', duration: '24:00', views: '360K' }
+  "pipes and cisterns": [
+    {
+      "id": "pipes_and_cisterns_1",
+      "title": "Pipes and Cisterns - Shortcuts & Tricks for 2026 Placement Tests, Job Interviews & Exams",
+      "channel": "CareerRide",
+      "videoId": "mBtBD1N7ywQ",
+      "thumbnail": "https://img.youtube.com/vi/mBtBD1N7ywQ/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=mBtBD1N7ywQ",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "pipes_and_cisterns_2",
+      "title": "Pipe and Cisterns Problems Tricks | Pipe and Tanki Shortcuts and Tricks | DSSSB, CTET, Bank PO",
+      "channel": "Dear Sir",
+      "videoId": "x3SEYdBUGaA",
+      "thumbnail": "https://img.youtube.com/vi/x3SEYdBUGaA/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=x3SEYdBUGaA",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "pipes_and_cisterns_3",
+      "title": "Pipe and Cistern Trick | maths trick by imran sir | Pipe and Tanki Shortcuts and Tricks",
+      "channel": "imran sir maths",
+      "videoId": "JZYnYhdCc1w",
+      "thumbnail": "https://img.youtube.com/vi/JZYnYhdCc1w/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=JZYnYhdCc1w",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "pipes_and_cisterns_4",
+      "title": "CAT 2026: Can You Solve This Pipes & Cisterns Question? 🔥",
+      "channel": "Cracku - MBA CAT Preparation",
+      "videoId": "Al3H7aJzkhI",
+      "thumbnail": "https://img.youtube.com/vi/Al3H7aJzkhI/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=Al3H7aJzkhI",
+      "duration": "Lesson",
+      "views": "High Quality"
+    }
   ],
-  'trains': [
-    { id: 'tr1', title: 'Train Problems - Complete Chapter', channel: 'TalentSprint Aptitude', videoId: 'J3S3H2bgMvI', thumbnail: 'https://img.youtube.com/vi/J3S3H2bgMvI/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=J3S3H2bgMvI', duration: '28:00', views: '820K' },
-    { id: 'tr2', title: 'Trains Aptitude Tricks - Same/Opposite', channel: 'Anil Kumar', videoId: 'Rr-HN-gCcAA', thumbnail: 'https://img.youtube.com/vi/Rr-HN-gCcAA/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=Rr-HN-gCcAA', duration: '24:10', views: '570K' },
-    { id: 'tr3', title: 'Trains Problems 25 Questions Solved', channel: 'CareerRide', videoId: 'e7zeSPTeSs8', thumbnail: 'https://img.youtube.com/vi/e7zeSPTeSs8/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=e7zeSPTeSs8', duration: '22:00', views: '410K' },
-    { id: 'tr4', title: 'Trains Speed Formula Shortcut', channel: 'Study Smart', videoId: 'HcvKE_hkOFo', thumbnail: 'https://img.youtube.com/vi/HcvKE_hkOFo/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=HcvKE_hkOFo', duration: '26:30', views: '460K' }
+  "trains": [
+    {
+      "id": "trains_1",
+      "title": "Problems on Trains - Shortcuts & Tricks for Placement Tests, Job Interviews & Exams",
+      "channel": "CareerRide",
+      "videoId": "78b4Jn4rw44",
+      "thumbnail": "https://img.youtube.com/vi/78b4Jn4rw44/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=78b4Jn4rw44",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "trains_2",
+      "title": "Time Speed and Distance Trick | Train Realted Questions | Maths Trick by imran sir | imran sir maths",
+      "channel": "imran sir maths",
+      "videoId": "m-s3vdPoIn4",
+      "thumbnail": "https://img.youtube.com/vi/m-s3vdPoIn4/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=m-s3vdPoIn4",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "trains_3",
+      "title": "Train Problems | Time, Speed and Distance",
+      "channel": "Shiksha Target",
+      "videoId": "tE9IoQptEVM",
+      "thumbnail": "https://img.youtube.com/vi/tE9IoQptEVM/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=tE9IoQptEVM",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "trains_4",
+      "title": "Problems on Trains Aptitude Trick | Yogesh Shirude",
+      "channel": "Intelox",
+      "videoId": "oUXiwqP8G3c",
+      "thumbnail": "https://img.youtube.com/vi/oUXiwqP8G3c/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=oUXiwqP8G3c",
+      "duration": "Lesson",
+      "views": "High Quality"
+    }
   ],
-  'boats and streams': [
-    { id: 'bs1', title: 'Boats and Streams - Full Chapter', channel: 'TalentSprint Aptitude', videoId: 'VX9m8e5Jbqc', thumbnail: 'https://img.youtube.com/vi/VX9m8e5Jbqc/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=VX9m8e5Jbqc', duration: '20:30', views: '630K' },
-    { id: 'bs2', title: 'Boats Streams Upstream Downstream', channel: 'Anil Kumar', videoId: 'K2YFyFGSqQk', thumbnail: 'https://img.youtube.com/vi/K2YFyFGSqQk/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=K2YFyFGSqQk', duration: '16:45', views: '410K' },
-    { id: 'bs3', title: 'Boats Streams 20 Problems Solved', channel: 'CareerRide', videoId: 'o3Wc0U5i0C0', thumbnail: 'https://img.youtube.com/vi/o3Wc0U5i0C0/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=o3Wc0U5i0C0', duration: '18:00', views: '300K' },
-    { id: 'bs4', title: 'Boats and Streams Shortcut Formula', channel: 'Study Smart', videoId: 'pWBvJPWGa8s', thumbnail: 'https://img.youtube.com/vi/pWBvJPWGa8s/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=pWBvJPWGa8s', duration: '22:00', views: '340K' }
+  "boats and streams": [
+    {
+      "id": "boats_and_streams_1",
+      "title": "Boats and Streams - Shortcuts & Tricks for 2026 Placement Tests, Job Interviews & Exams",
+      "channel": "CareerRide",
+      "videoId": "-EdJ4kAW-j4",
+      "thumbnail": "https://img.youtube.com/vi/-EdJ4kAW-j4/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=-EdJ4kAW-j4",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "boats_and_streams_2",
+      "title": "Boat And Stream | Boat And Stream Problems Tricks/Concept/Formula/Short Trick/Shortcut | In Hindi",
+      "channel": "Dear Sir",
+      "videoId": "4HRLswVPOG8",
+      "thumbnail": "https://img.youtube.com/vi/4HRLswVPOG8/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=4HRLswVPOG8",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "boats_and_streams_3",
+      "title": "Boat And Stream | Boat and Stream problems tricks | maths trick by imran sir maths",
+      "channel": "imran sir maths",
+      "videoId": "bGsngq-JTuM",
+      "thumbnail": "https://img.youtube.com/vi/bGsngq-JTuM/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=bGsngq-JTuM",
+      "duration": "Lesson",
+      "views": "High Quality"
+    },
+    {
+      "id": "boats_and_streams_4",
+      "title": "Boat and stream",
+      "channel": "STEP - IN MATHS",
+      "videoId": "V9zDSG3To54",
+      "thumbnail": "https://img.youtube.com/vi/V9zDSG3To54/mqdefault.jpg",
+      "url": "https://www.youtube.com/watch?v=V9zDSG3To54",
+      "duration": "Lesson",
+      "views": "High Quality"
+    }
   ]
 };
 
-// Study tips per topic
+// Expert study tips per topic
 const studyTips = {
-  'number system': ['Learn LCM/HCF formulas', 'Practice divisibility rules', 'Memorize squares up to 30', 'Practice remainder theorem'],
-  'percentages': ['Learn fraction-to-percentage conversions', 'Practice successive percentage changes', 'Master percentage increase/decrease formulas'],
-  'profit and loss': ['Understand CP, SP, MP concepts', 'Practice discount problems', 'Learn profit% and loss% formulas'],
-  'default': ['Review basic formulas', 'Practice with timed mock tests', 'Focus on accuracy before speed', 'Solve previous year questions']
+  "number system": [
+    "Learn LCM/HCF formulas",
+    "Practice divisibility rules for 7, 8, 9, 11",
+    "Memorize squares up to 30 and cubes up to 15",
+    "Practice remainder theorem and unit digit techniques"
+  ],
+  "percentages": [
+    "Memorize standard fraction-to-percentage conversions (1/2 to 1/12)",
+    "Master successive percentage change: a + b + (ab)/100",
+    "Practice expenditure vs consumption trade-off problems"
+  ],
+  "profit and loss": [
+    "Understand Cost Price, Selling Price and Marked Price relationship",
+    "Learn dishonest dealer discount and false weight formulas",
+    "Practice successive discount calculations"
+  ],
+  "simple interest": [
+    "Master SI = (P * R * T) / 100 fundamentals",
+    "Practice sum doubling/tripling time period questions",
+    "Learn installment payment calculation formulas"
+  ],
+  "compound interest": [
+    "Use formula A = P(1 + r/100)^n and compounding intervals",
+    "Learn 2-year difference formula: CI - SI = P(R/100)^2",
+    "Practice 3-year difference formula and effective rate method"
+  ],
+  "time and work": [
+    "Always convert work into 1-day individual units (LCM method)",
+    "Calculate efficiencies of workers as parts of total work",
+    "Practice alternate-day work and workers joining/leaving scenarios"
+  ],
+  "time speed distance": [
+    "Convert km/h to m/s by multiplying with 5/18 and vice-versa (18/5)",
+    "Use relative speed: (S1 + S2) in opposite directions, (S1 - S2) in same direction",
+    "Practice average speed formula: 2xy / (x + y)"
+  ],
+  "ratio and proportion": [
+    "Master finding combined ratios A:B:C from A:B and B:C",
+    "Practice coin-based ratio problems (denominations and total value)",
+    "Understand mean, third, and fourth proportional equations"
+  ],
+  "averages": [
+    "Use formula: Average = Total Sum / Number of Elements",
+    "Practice weighted average and replacement of members techniques",
+    "Understand change in average upon addition or exclusion"
+  ],
+  "ages": [
+    "Set linear equations using Present Age as base variable X",
+    "Formulate past and future conditions carefully (+ years, - years)",
+    "Use ratio cross-multiplication shortcuts to solve in seconds"
+  ],
+  "probability": [
+    "Use classical formula P(E) = Favorable outcomes / Total outcomes",
+    "Master deck of cards (52 cards, 4 suits, 13 ranks, 12 face cards)",
+    "Practice coin tosses and dice rolls combined probabilities"
+  ],
+  "permutations and combinations": [
+    "Understand difference: Permutation is arrangement (order matters), Combination is selection",
+    "Formulae: nPr = n! / (n - r)! and nCr = n! / [r! * (n - r)!]",
+    "Master grouping and vowels-together problem types"
+  ],
+  "data interpretation": [
+    "Master fast approximations and mental percentage estimation",
+    "Practice reading Bar Charts, Pie Charts, and Data Tables accurately",
+    "Calculate ratio changes and growth rates directly without calculating absolute values"
+  ],
+  "logical reasoning": [
+    "Identify pattern progressions in number and letter series",
+    "Draw clean diagrams for linear and circular seating arrangements",
+    "Use elimination strategy on multiple-choice options"
+  ],
+  "verbal ability": [
+    "Check Subject-Verb Agreement rules and pronoun antecedents",
+    "Look for context clues in reading comprehension and sentence completion",
+    "Memorize high-frequency GRE/CAT root words, synonyms, and idioms"
+  ],
+  "coding decoding": [
+    "Write alphabet position ranks (A=1 to Z=26) and reverse ranks (A=26 to Z=1)",
+    "Check for shift patterns (+1, -2, alternate)",
+    "Look for reverse word order, vowel shifts, and cross-letter coding"
+  ],
+  "blood relations": [
+    "Draw standard family tree diagrams (+ for male, - for female, = for spouses)",
+    "Break complex \"Pointing to someone\" statements from the end of the sentence",
+    "Be careful with gender assumptions based on names alone"
+  ],
+  "syllogisms": [
+    "Draw standard Venn diagrams for statements",
+    "Check if conclusion is valid in all possible Venn diagrams",
+    "Understand complimentary pairs (Either I or II follows for Some + No)"
+  ],
+  "directions": [
+    "Always fix standard 4 cardinal directions (N, S, E, W) on paper",
+    "Use Pythagoras Theorem (a^2 + b^2 = c^2) for shortest distance",
+    "For shadows: Sunrise shadow falls West; Sunset shadow falls East"
+  ],
+  "clocks": [
+    "Formula for angle between hands: |30H - (11/2)M|",
+    "Minute hand moves 6 degrees per minute, hour hand moves 0.5 degrees per minute",
+    "Hands coincide 22 times and are at right angles 44 times in 24 hours"
+  ],
+  "calendars": [
+    "Normal year has 1 odd day (365 % 7 = 1), Leap year has 2 odd days (366 % 7 = 2)",
+    "Century leap years must be divisible by 400 (e.g. 1600, 2000)",
+    "Find day by adding total odd days from base century date"
+  ],
+  "mixtures and alligation": [
+    "Rule of Alligation: (Cheaper Quantity) / (Dearer Quantity) = (d - m) / (m - c)",
+    "Practice replacement problems: Final = Initial * (1 - x/C)^n",
+    "Apply alligation to percentage profits and average costs"
+  ],
+  "pipes and cisterns": [
+    "Inlet pipes do positive work (+1/time), outlet leaks do negative work (-1/time)",
+    "Use total tank capacity as LCM of all given times",
+    "Calculate net filling rate per minute when multiple taps operate"
+  ],
+  "trains": [
+    "Length of train + Length of platform/bridge = Total distance to cross",
+    "Crossing a man or pole: distance = train length only",
+    "Relative speed applies when two trains are moving"
+  ],
+  "boats and streams": [
+    "Downstream speed = Boat speed (u) + Stream speed (v)",
+    "Upstream speed = Boat speed (u) - Stream speed (v)",
+    "Boat speed in still water = (Downstream + Upstream) / 2"
+  ],
+  "default": [
+    "Review foundational formulas and shortcut methods",
+    "Practice with a timed stopwatch to build exam speed",
+    "Analyze incorrect questions and review step-by-step solutions",
+    "Solve authentic previous-year question papers"
+  ]
 };
 
 router.get('/:topic', (req, res) => {
   const topicRaw = req.params.topic;
+  if (!topicRaw) {
+    return res.status(400).json({ error: 'Topic parameter required' });
+  }
+
   const topic = topicRaw.toLowerCase().trim();
 
   // Try exact match first
-  let videos = mockVideoDB[topic];
+  let videos = verifiedVideoDB[topic];
 
   // Fuzzy match if exact not found
   if (!videos) {
-    const key = Object.keys(mockVideoDB).find(k =>
+    const key = Object.keys(verifiedVideoDB).find(k =>
       k.includes(topic) || topic.includes(k) ||
       k.split(' ').some(word => topic.includes(word) && word.length > 3)
     );
-    videos = key ? mockVideoDB[key] : null;
+    videos = key ? verifiedVideoDB[key] : null;
   }
 
   // Find matching study tips
@@ -184,12 +1216,8 @@ router.get('/:topic', (req, res) => {
   const tips = studyTips[tipKey] || studyTips['default'];
 
   if (!videos) {
-    // Generic fallback
-    videos = [
-      { id: 'gen1', title: `${topicRaw} - Complete Aptitude Guide`, channel: 'TalentSprint Aptitude', videoId: 'WfbwrJFTMBE', thumbnail: 'https://img.youtube.com/vi/WfbwrJFTMBE/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=WfbwrJFTMBE', duration: '30:00', views: '500K' },
-      { id: 'gen2', title: `${topicRaw} Tricks and Shortcuts`, channel: 'Anil Kumar', videoId: 'mSqT25QvxGQ', thumbnail: 'https://img.youtube.com/vi/mSqT25QvxGQ/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=mSqT25QvxGQ', duration: '25:00', views: '400K' },
-      { id: 'gen3', title: `${topicRaw} Practice Questions`, channel: 'CareerRide', videoId: 'eATSHh1BFME', thumbnail: 'https://img.youtube.com/vi/eATSHh1BFME/mqdefault.jpg', url: 'https://www.youtube.com/watch?v=eATSHh1BFME', duration: '20:00', views: '300K' },
-    ];
+    // Verified fallback from Number System
+    videos = verifiedVideoDB['number system'] || [];
   }
 
   res.json({ videos, studyTips: tips });
