@@ -119,6 +119,10 @@ if (fs.existsSync(clientDistPath)) {
     if (req.path.startsWith('/api') || req.path.startsWith('/socket.io')) {
       return next();
     }
+    // Don't rewrite requests for static asset files that have an extension
+    if (path.extname(req.path)) {
+      return res.status(404).end();
+    }
     res.sendFile(path.join(clientDistPath, 'index.html'));
   });
 }

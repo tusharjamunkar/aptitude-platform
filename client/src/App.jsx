@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './pages/auth/Login';
@@ -19,41 +19,102 @@ import Layout from './components/Layout';
 
 function ProtectedRoute({ children, role }) {
   const { user, loading } = useAuth();
-  if (loading) return <div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div></div>;
-  if (!user) return <Navigate to="/login" replace />;
-  if (role && user.role !== role) return <Navigate to={user.role === 'TEACHER' ? '/teacher' : '/student'} replace />;
+  const location = useLocation();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50">
+        <div className="w-10 h-10 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mb-3"></div>
+        <p className="text-xs font-semibold text-slate-600 tracking-wide">Checking authentication...</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  const userRole = user.role?.toUpperCase();
+  const targetRole = role?.toUpperCase();
+
+  if (targetRole && userRole !== targetRole) {
+    return <Navigate to={userRole === 'TEACHER' ? '/teacher' : '/student'} replace />;
+  }
+
   return children;
 }
 
 function AppRoutes() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50">
+        <div className="w-10 h-10 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mb-3"></div>
+        <p className="text-xs font-semibold text-slate-600 tracking-wide">Checking authentication...</p>
+      </div>
+    );
+  }
+
+  const userRole = user?.role?.toUpperCase();
+
   return (
     <Routes>
-      <Route path="/login" element={!user ? <Login /> : <Navigate to={user.role === 'TEACHER' ? '/teacher' : '/student'} />} />
-      <Route path="/register" element={!user ? <Register /> : <Navigate to={user.role === 'TEACHER' ? '/teacher' : '/student'} />} />
-      
-      {/* Teacher Routes */}
+      <Route
+        path="/login"
+        element={!user ? <Login /> : <Navigate to={userRole === 'TEACHER' ? '/teacher' : '/student'} replace />}
+      />
+      <Route
+        path="/register"
+        element={!user ? <Register /> : <Navigate to={userRole === 'TEACHER' ? '/teacher' : '/student'} replace />}
+      />
+
+      {/* Teacher Routes - Supports /teacher, /teacher/dashboard, /teacher/tests, etc. */}
       <Route path="/teacher" element={<ProtectedRoute role="TEACHER"><Layout /></ProtectedRoute>}>
         <Route index element={<TeacherDashboard />} />
+        <Route path="dashboard" element={<TeacherDashboard />} />
+        <Route path="profile" element={<TeacherDashboard />} />
         <Route path="questions" element={<QuestionBank />} />
         <Route path="create-test" element={<CreateTest />} />
+        <Route path="tests" element={<TeacherDashboard />} />
+        <Route path="tests/:id" element={<TestResults />} />
         <Route path="tests/:id/results" element={<TestResults />} />
         <Route path="analytics" element={<TeacherAnalytics />} />
+        <Route path="students" element={<TeacherAnalytics />} />
+        <Route path="results" element={<TeacherAnalytics />} />
         <Route path="milestones" element={<ManageMilestones />} />
       </Route>
-      
-      {/* Student Routes */}
+
+      {/* Student Routes - Supports /student, /student/dashboard, /student/tests, etc. */}
       <Route path="/student" element={<ProtectedRoute role="STUDENT"><Layout /></ProtectedRoute>}>
         <Route index element={<StudentDashboard />} />
+        <Route path="dashboard" element={<StudentDashboard />} />
+        <Route path="profile" element={<StudentDashboard />} />
+        <Route path="tests" element={<StudentDashboard />} />
+        <Route path="test" element={<StudentDashboard />} />
         <Route path="analytics" element={<StudentAnalytics />} />
         <Route path="milestones" element={<StudentMilestones />} />
         <Route path="history" element={<TestHistory />} />
+        <Route path="results" element={<TestHistory />} />
       </Route>
-      
-      {/* Test Taking - Full screen, no layout */}
-      <Route path="/take-test/:testId" element={<ProtectedRoute role="STUDENT"><TakeTest /></ProtectedRoute>} />
-      
-      <Route path="/" element={<Navigate to={user ? (user.role === 'TEACHER' ? '/teacher' : '/student') : '/login'} />} />
+
+      {/* Test Taking Experience - Supports both /take-test/:testId and /student/test/:testId */}
+      <Route
+        path="/take-test/:testId"
+        element={<ProtectedRoute role="STUDENT"><TakeTest /></ProtectedRoute>}
+      />
+      <Route
+        path="/student/test/:testId"
+        element={<ProtectedRoute role="STUDENT"><TakeTest /></ProtectedRoute>}
+      />
+
+      {/* Root redirect */}
+      <Route
+        path="/"
+        element={<Navigate to={user ? (userRole === 'TEACHER' ? '/teacher' : '/student') : '/login'} replace />}
+      />
+
+      {/* Catch-all 404 for genuinely nonexistent application routes */}
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
