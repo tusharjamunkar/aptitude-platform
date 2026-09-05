@@ -605,44 +605,118 @@ async function seedDefaultData(prisma) {
       questionIds = existingQs.map(q => q.id);
     }
 
-    // 3. Ensure a standard 45-minute Test with these 45 questions exists
-    const defaultTest = await prisma.test.findFirst({
-      where: {
-        title: 'Previous Year Aptitude Assessment (45 Questions)',
-        createdBy: teacher.id
-      }
+    // 3. Ensure 3 distinct, authentic 45-minute tests exist with proper topic distributions:
+    // Test 1: Quantitative & Reasoning Fundamentals (45 Mins, 15 Questions)
+    // Test 2: Placement Intermediate Assessment (45 Mins, 15 Questions)
+    // Test 3: Advanced Competitive Aptitude Exam (45 Mins, 15 Questions)
+    // Plus the 45-question comprehensive assessment
+
+    const allQuestions = await prisma.question.findMany({
+      where: { createdBy: teacher.id },
+      orderBy: { id: 'asc' }
     });
 
-    if (!defaultTest) {
-      const createdTest = await prisma.test.create({
-        data: {
-          title: 'Previous Year Aptitude Assessment (45 Questions)',
-          subject: 'Comprehensive Aptitude',
-          topic: 'Quantitative, Reasoning & Verbal',
-          description: 'Official 45-minute previous-year aptitude exam comprising 45 authentic questions from TCS NQT, Infosys, Wipro, Cognizant, and GATE.',
-          duration: 45, // Exactly 45 minutes
-          isActive: true,
-          isMandatory: true,
-          warningsAllowed: 1,
-          createdBy: teacher.id,
-          questions: {
-            connect: questionIds.map(id => ({ id }))
-          }
-        }
+    // Partition questions by difficulty and topic
+    const easyQs = allQuestions.filter(q => q.difficulty === 'EASY');
+    const medQs = allQuestions.filter(q => q.difficulty === 'MEDIUM');
+    const hardQs = allQuestions.filter(q => q.difficulty === 'HARD');
+
+    // Test 1: Fundamentals (15 questions - mostly EASY & foundational across Quant, Reasoning, Verbal)
+    const test1QIds = [
+      ...easyQs.slice(0, 10).map(q => q.id),
+      ...medQs.slice(0, 5).map(q => q.id)
+    ];
+
+    // Test 2: Intermediate (15 questions - balanced MEDIUM questions across Quant, Reasoning, Verbal)
+    const test2QIds = [
+      ...medQs.slice(5, 17).map(q => q.id),
+      ...hardQs.slice(0, 3).map(q => q.id)
+    ];
+
+    // Test 3: Advanced (15 questions - challenging MEDIUM & HARD competitive questions)
+    const test3QIds = [
+      ...hardQs.map(q => q.id),
+      ...medQs.slice(17, 17 + (15 - hardQs.length)).map(q => q.id)
+    ];
+
+    const testDefinitions = [
+      {
+        title: 'Aptitude Test 1 – Fundamentals Assessment',
+        subject: 'Foundational Aptitude',
+        topic: 'Number Systems, Percentages, Series & Verbal Basics',
+        description: '45-minute core fundamentals assessment testing speed, basic arithmetic, numerical operations, and elementary deduction.',
+        duration: 45,
+        isActive: true,
+        isMandatory: true,
+        questionIds: test1QIds.length >= 10 ? test1QIds : questionIds.slice(0, 15)
+      },
+      {
+        title: 'Aptitude Test 2 – Intermediate Placement Assessment',
+        subject: 'Corporate Campus Placement',
+        topic: 'Profit & Loss, Time-Work, Speed-Distance, Syllogisms & Logic',
+        description: '45-minute intermediate assessment calibrated to TCS NQT, Infosys, and Wipro campus placement standards.',
+        duration: 45,
+        isActive: true,
+        isMandatory: true,
+        questionIds: test2QIds.length >= 10 ? test2QIds : questionIds.slice(15, 30)
+      },
+      {
+        title: 'Aptitude Test 3 – Advanced Competitive Aptitude',
+        subject: 'Advanced Aptitude & GATE',
+        topic: 'Permutations, Probability, Mixtures, Circular Seating & Critical Reasoning',
+        description: '45-minute advanced evaluation featuring higher-difficulty problem-solving from GATE Aptitude and top-tier corporate drives.',
+        duration: 45,
+        isActive: true,
+        isMandatory: false,
+        questionIds: test3QIds.length >= 10 ? test3QIds : questionIds.slice(30, 45)
+      },
+      {
+        title: 'Comprehensive Aptitude Assessment (45 Questions)',
+        subject: 'Comprehensive Aptitude',
+        topic: 'Quantitative, Reasoning & Verbal',
+        description: 'Official 45-minute full previous-year aptitude exam comprising all 45 authentic questions from TCS NQT, Infosys, Wipro, Cognizant, and GATE.',
+        duration: 45,
+        isActive: true,
+        isMandatory: false,
+        questionIds: questionIds
+      }
+    ];
+
+    for (const tDef of testDefinitions) {
+      let existingTest = await prisma.test.findFirst({
+        where: { title: tDef.title, createdBy: teacher.id }
       });
-      console.log(`✅ Default 45-Minute Assessment Test created with ID: ${createdTest.id}`);
-    } else {
-      // Ensure test duration is exactly 45 and active
-      await prisma.test.update({
-        where: { id: defaultTest.id },
-        data: {
-          duration: 45,
-          isActive: true,
-          questions: {
-            connect: questionIds.map(id => ({ id }))
+
+      if (!existingTest) {
+        existingTest = await prisma.test.create({
+          data: {
+            title: tDef.title,
+            subject: tDef.subject,
+            topic: tDef.topic,
+            description: tDef.description,
+            duration: tDef.duration,
+            isActive: tDef.isActive,
+            isMandatory: tDef.isMandatory,
+            warningsAllowed: 1,
+            createdBy: teacher.id,
+            questions: {
+              connect: tDef.questionIds.map(id => ({ id }))
+            }
           }
-        }
-      });
+        });
+        console.log(`✅ Seeded Test: "${tDef.title}" (${tDef.duration} mins, ${tDef.questionIds.length} questions)`);
+      } else {
+        await prisma.test.update({
+          where: { id: existingTest.id },
+          data: {
+            duration: 45,
+            isActive: true,
+            questions: {
+              connect: tDef.questionIds.map(id => ({ id }))
+            }
+          }
+        });
+      }
     }
   } catch (err) {
     console.error('Error during default data seeding:', err.message);

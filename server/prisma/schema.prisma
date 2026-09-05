@@ -85,6 +85,7 @@ model TestAttempt {
   student         User          @relation(fields: [studentId], references: [id])
   testId          String
   test            Test          @relation(fields: [testId], references: [id])
+  attemptNumber   Int           @default(1)
   startedAt       DateTime      @default(now())
   submittedAt     DateTime?
   score           Float         @default(0)
@@ -96,8 +97,6 @@ model TestAttempt {
   disqualReason   String?
   answers         StudentAnswer[]
   createdAt       DateTime      @default(now())
-  
-  @@unique([studentId, testId])
 }
 
 enum AttemptStatus {

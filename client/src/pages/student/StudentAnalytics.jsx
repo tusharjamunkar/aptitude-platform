@@ -36,21 +36,25 @@ export default function StudentAnalytics() {
       const data = res.data || {};
       setAnalytics(data);
 
-      // If there are weak topics, fetch verified YouTube tutorials for each
+      // Only recommend videos for weak topics (<60%), strictly sorted weakest-first
       const weakList = data.weakTopics || [];
-      const topicsToFetch = weakList.length > 0 ? weakList.slice(0, 3) : ['Number System', 'Percentages'];
+      const topicsToFetch = weakList.slice(0, 4);
       
+      const vMap = {};
+      const tMap = {};
       for (const topic of topicsToFetch) {
         try {
           const ytRes = await api.get(`/youtube/${encodeURIComponent(topic)}`);
           if (ytRes.data) {
-            setWeakTopicVideos((prev) => ({ ...prev, [topic]: ytRes.data.videos || [] }));
-            setWeakTopicTips((prev) => ({ ...prev, [topic]: ytRes.data.studyTips || [] }));
+            vMap[topic] = ytRes.data.videos || [];
+            tMap[topic] = ytRes.data.studyTips || [];
           }
         } catch (e) {
-          console.error('Error fetching videos for', topic, e);
+          console.error('Error fetching videos for weak topic', topic, e);
         }
       }
+      setWeakTopicVideos(vMap);
+      setWeakTopicTips(tMap);
     } catch (err) {
       console.error('Error fetching student analytics:', err);
     } finally {

@@ -69,27 +69,48 @@ export default function TestHistory() {
               <thead className="bg-slate-50 text-slate-600 uppercase tracking-wider font-semibold border-b border-slate-200">
                 <tr>
                   <th className="py-3 px-4">Test Title</th>
-                  <th className="py-3 px-4">Subject Topic</th>
-                  <th className="py-3 px-4">Date & Time</th>
-                  <th className="py-3 px-4">Score</th>
+                  <th className="py-3 px-4">Attempt</th>
+                  <th className="py-3 px-4">Date</th>
+                  <th className="py-3 px-4">Marks</th>
                   <th className="py-3 px-4">Percentage</th>
-                  <th className="py-3 px-4">Proctoring Status</th>
+                  <th className="py-3 px-4">Improvement</th>
+                  <th className="py-3 px-4">Status</th>
                   <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                {attempts.map((att) => {
+                {attempts.map((att, idx) => {
                   const pct = att.totalMarks > 0 ? Math.round((att.score / att.totalMarks) * 100) : 0;
+                  
+                  // Calculate improvement from earlier attempt of the same test if available
+                  const sameTestEarlierAttempts = attempts.filter(
+                    a => a.testId === att.testId && 
+                    new Date(a.createdAt) < new Date(att.createdAt) && 
+                    a.status === 'COMPLETED'
+                  );
+                  let improvementText = null;
+                  if (sameTestEarlierAttempts.length > 0) {
+                    const prev = sameTestEarlierAttempts[sameTestEarlierAttempts.length - 1];
+                    const prevPct = prev.totalMarks > 0 ? Math.round((prev.score / prev.totalMarks) * 100) : 0;
+                    const diff = pct - prevPct;
+                    improvementText = {
+                      diff,
+                      prevPct
+                    };
+                  }
+
                   return (
                     <tr key={att.id} className="hover:bg-slate-50/80 transition-colors">
                       <td className="py-3.5 px-4 font-bold text-slate-900">
                         {att.test?.title || 'Assessment'}
                       </td>
-                      <td className="py-3.5 px-4 text-slate-500">
-                        {att.test?.topic || 'General'}
+                      <td className="py-3.5 px-4">
+                        <span className="font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                          Attempt {att.attemptNumber || 1}
+                        </span>
                       </td>
                       <td className="py-3.5 px-4 text-slate-500">
-                        {new Date(att.startedAt).toLocaleString()}
+                        {new Date(att.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                       </td>
                       <td className="py-3.5 px-4 font-semibold text-slate-800">
                         {att.score} / {att.totalMarks}
@@ -98,6 +119,21 @@ export default function TestHistory() {
                         <span className={`font-bold ${pct >= 60 ? 'text-emerald-600' : 'text-rose-600'}`}>
                           {pct}%
                         </span>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        {improvementText ? (
+                          <span className={`inline-flex items-center gap-1 font-bold text-[11px] px-2 py-0.5 rounded-full ${
+                            improvementText.diff > 0
+                              ? 'text-emerald-700 bg-emerald-50 border border-emerald-200'
+                              : improvementText.diff < 0
+                              ? 'text-rose-700 bg-rose-50 border border-rose-200'
+                              : 'text-slate-600 bg-slate-100'
+                          }`}>
+                            {improvementText.diff > 0 ? `+${improvementText.diff}%` : `${improvementText.diff}%`}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 text-[11px]">Base Attempt</span>
+                        )}
                       </td>
                       <td className="py-3.5 px-4">
                         <span
@@ -112,12 +148,18 @@ export default function TestHistory() {
                           {att.status}
                         </span>
                       </td>
-                      <td className="py-3.5 px-4 text-right">
+                      <td className="py-3.5 px-4 text-right space-x-2">
                         <button
                           onClick={() => handleViewDetails(att.id)}
                           className="text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors"
                         >
-                          View Breakdown →
+                          Details
+                        </button>
+                        <button
+                          onClick={() => window.location.href = `/take-test/${att.testId}`}
+                          className="text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-md transition-colors"
+                        >
+                          Retake
                         </button>
                       </td>
                     </tr>

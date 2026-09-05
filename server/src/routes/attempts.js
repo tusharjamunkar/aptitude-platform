@@ -8,7 +8,7 @@ router.use(authenticate);
 
 router.post('/', async (req, res) => {
   try {
-    const { testId } = req.body;
+    const { testId, isRetake } = req.body;
     const test = await prisma.test.findUnique({ 
       where: { id: testId },
       include: { questions: true }
@@ -16,19 +16,28 @@ router.post('/', async (req, res) => {
     
     if (!test || !test.isActive) return res.status(400).json({ error: 'Test not available' });
     if (test.deadline && new Date() > new Date(test.deadline)) return res.status(400).json({ error: 'Test deadline passed' });
-    
-    const existing = await prisma.testAttempt.findFirst({
-      where: { testId, studentId: req.user.id, status: { in: ['COMPLETED', 'DISQUALIFIED'] } }
-    });
-    if (existing) return res.status(400).json({ error: 'Test already completed' });
 
+    // Check if there is an in-progress attempt for this student & test
     let attempt = await prisma.testAttempt.findFirst({
-      where: { testId, studentId: req.user.id, status: 'IN_PROGRESS' }
+      where: { testId, studentId: req.user.id, status: 'IN_PROGRESS' },
+      orderBy: { createdAt: 'desc' }
     });
 
+    // If no in-progress attempt, create a new attempt
     if (!attempt) {
+      // Calculate attempt number
+      const previousAttemptsCount = await prisma.testAttempt.count({
+        where: { testId, studentId: req.user.id }
+      });
+      const nextAttemptNumber = previousAttemptsCount + 1;
+
       attempt = await prisma.testAttempt.create({
-        data: { studentId: req.user.id, testId }
+        data: {
+          studentId: req.user.id,
+          testId,
+          attemptNumber: nextAttemptNumber,
+          startedAt: new Date()
+        }
       });
       
       const answerData = test.questions.map(q => ({
@@ -124,6 +133,40 @@ router.post('/:id/submit', async (req, res) => {
       data: { status: 'COMPLETED', submittedAt: new Date(), score, totalMarks }
     });
     
+    // Calculate topic-wise breakdown for this attempt
+    const topicStats = {};
+    for (const ans of attempt.answers) {
+      const top = ans.question.topic || 'General';
+      if (!topicStats[top]) {
+        topicStats[top] = { total: 0, correct: 0, incorrect: 0, marksObtained: 0, maxMarks: 0 };
+      }
+      topicStats[top].total++;
+      topicStats[top].maxMarks += ans.question.marks;
+      if (ans.selectedAnswer === ans.question.correctAnswer) {
+        topicStats[top].correct++;
+        topicStats[top].marksObtained += ans.question.marks;
+      } else {
+        topicStats[top].incorrect++;
+        if (ans.selectedAnswer) {
+          topicStats[top].marksObtained -= ans.question.negativeMarks;
+        }
+      }
+    }
+
+    const attemptTopicPerformance = Object.entries(topicStats).map(([topic, stats]) => {
+      const percentage = stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0;
+      return {
+        topic,
+        totalQuestions: stats.total,
+        correctAnswers: stats.correct,
+        incorrectAnswers: stats.incorrect,
+        percentage,
+        isWeak: percentage < 60
+      };
+    }).sort((a, b) => a.percentage - b.percentage);
+
+    const weakTopics = attemptTopicPerformance.filter(t => t.isWeak).map(t => t.topic);
+
     // Update milestones
     const studentTestsCount = await prisma.testAttempt.count({
       where: { studentId: req.user.id, status: 'COMPLETED' }
@@ -140,7 +183,11 @@ router.post('/:id/submit', async (req, res) => {
       }
     }
 
-    res.json(updated);
+    res.json({
+      ...updated,
+      topicPerformance: attemptTopicPerformance,
+      weakTopics
+    });
   } catch (err) {
     res.status(500).json({ error: 'Failed to submit attempt' });
   }

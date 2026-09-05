@@ -1191,6 +1191,46 @@ const studyTips = {
   ]
 };
 
+// Hierarchical Curriculum: Subject -> Topic -> Subtopics
+const topicCurriculum = {
+  "Quantitative Aptitude": {
+    "Number System": ["Divisibility Rules", "Unit Digit", "Remainder Theorem", "LCM & HCF"],
+    "Percentages": ["Fraction to Percentage", "Successive Change", "Expenditure & Consumption"],
+    "Profit and Loss": ["Cost Price & Selling Price", "Marked Price & Discount", "Dishonest Dealer"],
+    "Simple Interest": ["SI Formula", "Doubling Period", "Installments"],
+    "Compound Interest": ["CI vs SI Formula", "Compounding Intervals", "Effective Annual Rate"],
+    "Time and Work": ["Work Units & LCM Method", "Worker Efficiency", "Alternate Day Work"],
+    "Time Speed Distance": ["Unit Conversion (km/h to m/s)", "Relative Speed", "Average Speed"],
+    "Ratio and Proportion": ["Combining Ratios", "Proportions", "Coin Problems"],
+    "Averages": ["Arithmetic Mean", "Weighted Averages", "Replacement Problems"],
+    "Ages": ["Linear Equations on Ages", "Past & Future Ratio Analysis"],
+    "Probability": ["Coin & Dice Events", "Card Deck Combinations", "Conditional Probability"],
+    "Permutations and Combinations": ["Arrangements (nPr)", "Selections (nCr)", "Vowels Together"],
+    "Data Interpretation": ["Bar Charts", "Pie Charts", "Data Tables & Growth Rates"],
+    "Mixtures and Alligation": ["Alligation Rule", "Repeated Dilution Formula"],
+    "Pipes and Cisterns": ["Inlet & Outlet Pipes", "Net Tank Filling Rate"],
+    "Trains": ["Platform Crossing", "Opposite & Same Direction Speed"],
+    "Boats and Streams": ["Upstream & Downstream", "Still Water Speed Calculation"]
+  },
+  "Logical Reasoning": {
+    "Logical Reasoning": ["Pattern Recognition", "Missing Number", "Logical Series"],
+    "Coding Decoding": ["Alphabet Positions", "Reverse Coding", "Shift Patterns"],
+    "Blood Relations": ["Family Tree Diagrams", "Coded Blood Relations"],
+    "Syllogisms": ["Venn Diagram Deductions", "Possibility Cases"],
+    "Directions": ["Compass Directions", "Pythagoras Distance", "Shadow Problems"],
+    "Clocks": ["Angle Between Hands", "Coinciding & Opposite Hands"],
+    "Calendars": ["Odd Days Concept", "Leap Year Calculation", "Century Days"]
+  },
+  "Verbal Ability": {
+    "Verbal Ability": ["Subject-Verb Agreement", "Vocabulary & Synonyms", "Sentence Correction", "Reading Comprehension"]
+  }
+};
+
+// GET /api/youtube/curriculum/taxonomy
+router.get('/curriculum/taxonomy', (req, res) => {
+  res.json(topicCurriculum);
+});
+
 router.get('/:topic', (req, res) => {
   const topicRaw = req.params.topic;
   if (!topicRaw) {
@@ -1200,15 +1240,32 @@ router.get('/:topic', (req, res) => {
   const topic = topicRaw.toLowerCase().trim();
 
   // Try exact match first
-  let videos = verifiedVideoDB[topic];
+  let matchedKey = Object.keys(verifiedVideoDB).find(k => k === topic);
 
   // Fuzzy match if exact not found
-  if (!videos) {
-    const key = Object.keys(verifiedVideoDB).find(k =>
+  if (!matchedKey) {
+    matchedKey = Object.keys(verifiedVideoDB).find(k =>
       k.includes(topic) || topic.includes(k) ||
       k.split(' ').some(word => topic.includes(word) && word.length > 3)
     );
-    videos = key ? verifiedVideoDB[key] : null;
+  }
+
+  let videos = matchedKey ? verifiedVideoDB[matchedKey] : null;
+
+  // Determine Subject and Subtopics
+  let subject = 'Quantitative Aptitude';
+  let subtopics = [];
+  let canonicalTopic = matchedKey || 'Number System';
+
+  for (const [subj, topics] of Object.entries(topicCurriculum)) {
+    for (const [topName, subs] of Object.entries(topics)) {
+      if (topName.toLowerCase() === canonicalTopic.toLowerCase()) {
+        subject = subj;
+        canonicalTopic = topName;
+        subtopics = subs;
+        break;
+      }
+    }
   }
 
   // Find matching study tips
@@ -1218,9 +1275,25 @@ router.get('/:topic', (req, res) => {
   if (!videos) {
     // Verified fallback from Number System
     videos = verifiedVideoDB['number system'] || [];
+    canonicalTopic = 'Number System';
   }
 
-  res.json({ videos, studyTips: tips });
+  // Enrich each video with subject and topic metadata
+  const enrichedVideos = videos.map((v, i) => ({
+    ...v,
+    subject,
+    topic: canonicalTopic,
+    subtopic: subtopics[i % (subtopics.length || 1)] || 'Concept & Tricks'
+  }));
+
+  res.json({
+    subject,
+    topic: canonicalTopic,
+    subtopics,
+    videos: enrichedVideos,
+    studyTips: tips
+  });
 });
 
 module.exports = router;
+

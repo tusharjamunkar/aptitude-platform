@@ -90,9 +90,33 @@ router.get('/:id/results', authenticate, requireTeacher, async (req, res) => {
             department: true,
             studyYear: true
           }
+        },
+        test: {
+          select: {
+            id: true,
+            title: true,
+            subject: true,
+            topic: true,
+            duration: true
+          }
+        },
+        answers: {
+          include: {
+            question: {
+              select: {
+                id: true,
+                topic: true,
+                marks: true,
+                correctAnswer: true
+              }
+            }
+          }
         }
       },
-      orderBy: { score: 'desc' }
+      orderBy: [
+        { studentId: 'asc' },
+        { attemptNumber: 'asc' }
+      ]
     });
     res.json(attempts);
   } catch (err) {
@@ -128,10 +152,23 @@ router.get('/available', authenticate, requireStudent, async (req, res) => {
         AND: [
           { OR: [{ scheduledAt: null }, { scheduledAt: { lte: now } }] },
           { OR: [{ deadline: null }, { deadline: { gte: now } }] },
-        ],
-        attempts: { none: { studentId: req.user.id, status: { in: ['COMPLETED', 'DISQUALIFIED'] } } }
+        ]
       },
-      include: { _count: { select: { questions: true } } },
+      include: { 
+        _count: { select: { questions: true } },
+        attempts: {
+          where: { studentId: req.user.id },
+          orderBy: { createdAt: 'desc' },
+          select: {
+            id: true,
+            attemptNumber: true,
+            score: true,
+            totalMarks: true,
+            status: true,
+            createdAt: true
+          }
+        }
+      },
       orderBy: { createdAt: 'desc' }
     });
     res.json(tests);

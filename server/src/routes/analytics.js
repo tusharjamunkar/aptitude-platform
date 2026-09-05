@@ -24,33 +24,69 @@ router.get('/student', requireStudent, async (req, res) => {
     let totalPossible = 0;
     
     const testHistory = attempts.map(a => {
-      const percentage = a.totalMarks > 0 ? (a.score / a.totalMarks) * 100 : 0;
+      const percentage = a.totalMarks > 0 ? Math.round((a.score / a.totalMarks) * 100) : 0;
       if (a.status === 'COMPLETED') {
         totalScore += a.score;
         totalPossible += a.totalMarks;
       }
       return {
+        id: a.id,
         testId: a.testId,
         testTitle: a.test.title,
         topic: a.test.topic,
+        attemptNumber: a.attemptNumber || 1,
         score: a.score,
         totalMarks: a.totalMarks,
         percentage,
         date: a.createdAt,
+        submittedAt: a.submittedAt,
         status: a.status
       };
     });
 
-    const averageScore = totalPossible > 0 ? (totalScore / totalPossible) * 100 : 0;
+    // Calculate improvement delta for tests that have multiple attempts
+    // Group completed attempts by testId sorted chronologically
+    const attemptsByTest = {};
+    [...completedAttempts].reverse().forEach(a => {
+      if (!attemptsByTest[a.testId]) attemptsByTest[a.testId] = [];
+      const pct = a.totalMarks > 0 ? Math.round((a.score / a.totalMarks) * 100) : 0;
+      attemptsByTest[a.testId].push(pct);
+    });
+
+    const testImprovements = {};
+    for (const [tId, scores] of Object.entries(attemptsByTest)) {
+      if (scores.length >= 2) {
+        const first = scores[0];
+        const latest = scores[scores.length - 1];
+        testImprovements[tId] = {
+          firstScore: first,
+          latestScore: latest,
+          delta: latest - first
+        };
+      }
+    }
+
+    const averageScore = totalPossible > 0 ? Math.round((totalScore / totalPossible) * 100) : 0;
     
     const allAnswers = attempts.flatMap(a => a.answers);
     const topicPerformance = calculateTopicPerformance(allAnswers);
-    const weakTopics = calculateWeakTopics(topicPerformance).map(t => t.topic);
+    
+    // Sort weak topics ascending by avgPercentage so the weakest topic comes first
+    const weakTopicObjs = calculateWeakTopics(topicPerformance).sort((a, b) => a.avgPercentage - b.avgPercentage);
+    const weakTopics = weakTopicObjs.map(t => t.topic);
     const strongTopics = topicPerformance.filter(t => t.avgPercentage >= 80).map(t => t.topic);
 
     res.json({
-      totalAttempts, totalCompleted, totalDisqualified, averageScore,
-      testHistory, topicPerformance, weakTopics, strongTopics,
+      totalAttempts,
+      totalCompleted,
+      totalDisqualified,
+      averageScore,
+      testHistory,
+      testImprovements,
+      topicPerformance,
+      weakTopics,
+      weakTopicDetails: weakTopicObjs,
+      strongTopics,
       recentTests: testHistory.slice(0, 5)
     });
   } catch (err) {
