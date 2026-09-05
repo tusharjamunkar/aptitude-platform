@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import StatCard from '../../components/StatCard';
-import { BookOpenIcon, UserIcon, CheckCircleIcon, ClockIcon, PlusIcon } from '../../components/Icons';
+import { BookOpenIcon, UserIcon, CheckCircleIcon, ClockIcon, PlusIcon, ClipboardListIcon } from '../../components/Icons';
 
 export default function TeacherDashboard() {
   const { user } = useAuth();
@@ -75,7 +75,14 @@ export default function TeacherDashboard() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <button
+            onClick={() => navigate('/teacher/questions?mode=bulk')}
+            className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 text-xs font-semibold py-2 px-3.5 rounded-lg flex items-center gap-1.5 transition-colors shadow-xs"
+          >
+            <ClipboardListIcon className="w-4 h-4 text-indigo-600" />
+            <span>Bulk Paste Questions</span>
+          </button>
           <button
             onClick={() => navigate('/teacher/create-test')}
             className="btn-primary text-xs py-2 px-3.5 flex items-center gap-1.5"
