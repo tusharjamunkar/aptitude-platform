@@ -16,27 +16,63 @@ export default function TakeTest() {
   const [questions, setQuestions] = useState([]);
   const [currentQIndex, setCurrentQIndex] = useState(0);
   const [answers, setAnswers] = useState({});
-  const [timeLeft, setTimeLeft] = useState(45 * 60); // 45 minutes default
+  const [timeLeft, setTimeLeft] = useState(45 * 60); // default in seconds
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  // Anti-cheat modal states
+  // Errors and Not Found states
+  const [isTestNotFound, setIsTestNotFound] = useState(false);
+  const [testError, setTestError] = useState(null);
+
+  // Modals
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showWarning, setShowWarning] = useState(false);
   const [isDisqualified, setIsDisqualified] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [scoreResult, setScoreResult] = useState(null);
 
+  // Refs for tracking submission and proctoring
   const socketRef = useRef(null);
   const timerRef = useRef(null);
+  const isSubmittingRef = useRef(false);
+  const hasSubmittedRef = useRef(false);
 
-  // Initialize test attempt
+  // Initialize test attempt (handles both initial start and F5 refresh resume)
   useEffect(() => {
     let socket;
     const init = async () => {
       try {
         setLoading(true);
+        setIsTestNotFound(false);
+        setTestError(null);
+
         const res = await api.post('/attempts', { testId });
-        const { attempt, answers: initialAnswers } = res.data;
+        const { attempt, answers: initialAnswers, isAlreadyCompleted } = res.data;
+
+        // If the student already completed this test earlier and refreshed
+        if (isAlreadyCompleted || attempt.status === 'COMPLETED') {
+          hasSubmittedRef.current = true;
+          isSubmittingRef.current = true;
+          setAttemptId(attempt.id);
+          setTestTitle(attempt.test?.title || 'Aptitude Assessment');
+          setScoreResult({
+            score: attempt.score,
+            totalMarks: attempt.totalMarks,
+            status: attempt.status
+          });
+          setShowResults(true);
+          setLoading(false);
+          return;
+        }
+
+        // If the attempt was previously disqualified
+        if (attempt.status === 'DISQUALIFIED') {
+          setAttemptId(attempt.id);
+          setTestTitle(attempt.test?.title || 'Aptitude Assessment');
+          setIsDisqualified(true);
+          setLoading(false);
+          return;
+        }
 
         setAttemptId(attempt.id);
         setTestTitle(attempt.test?.title || 'Aptitude Assessment');
@@ -56,20 +92,36 @@ export default function TakeTest() {
         }));
         setQuestions(mappedQuestions);
 
-        // Preload existing answers if any
+        // Preload existing answers saved in DB (ensures zero data loss on refresh)
         const answerMap = {};
         initialAnswers.forEach((a) => {
           if (a.selectedAnswer) answerMap[a.question.id] = a.selectedAnswer;
         });
         setAnswers(answerMap);
 
-        // Calculate timer: remaining = durationSec - elapsedSec (persists across page refresh)
+        // Restore active question index from sessionStorage if available
+        const savedQIndex = sessionStorage.getItem(`attempt_${attempt.id}_qIndex`);
+        if (savedQIndex !== null && !isNaN(parseInt(savedQIndex, 10))) {
+          const parsed = parseInt(savedQIndex, 10);
+          if (parsed >= 0 && parsed < mappedQuestions.length) {
+            setCurrentQIndex(parsed);
+          }
+        }
+
+        // Calculate timer: remaining = durationSec - elapsedSec
         const durationMin = attempt.test?.duration || 45;
         const durationSec = durationMin * 60;
         const startedAtMs = new Date(attempt.startedAt).getTime();
         const elapsedSec = Math.floor((Date.now() - startedAtMs) / 1000);
         const remaining = Math.max(0, durationSec - elapsedSec);
         setTimeLeft(remaining);
+
+        // If time already expired while student was away, trigger auto-submit
+        if (remaining <= 0) {
+          setTimeLeft(0);
+          handleAutoSubmit(attempt.id);
+          return;
+        }
 
         // Connect Socket.io for proctoring
         const socketUrl = import.meta.env.VITE_API_URL || window.location.origin;
@@ -80,17 +132,29 @@ export default function TakeTest() {
           socket.emit('join-attempt', attempt.id);
         });
 
-        socket.on('tab-warning', (data) => {
-          setShowWarning(true);
+        socket.on('tab-warning', () => {
+          if (!isSubmittingRef.current && !hasSubmittedRef.current) {
+            setShowWarning(true);
+          }
         });
 
-        socket.on('disqualified', (data) => {
-          setIsDisqualified(true);
+        socket.on('disqualified', () => {
+          if (!isSubmittingRef.current && !hasSubmittedRef.current) {
+            setIsDisqualified(true);
+          }
         });
       } catch (err) {
         console.error('Failed to initialize attempt:', err);
-        toast.error(err.response?.data?.error || 'Failed to load test. Please try again.');
-        navigate('/student');
+        const status = err.response?.status;
+        const errMsg = err.response?.data?.error;
+
+        if (status === 404) {
+          setIsTestNotFound(true);
+        } else if (status === 403) {
+          setTestError(errMsg || 'You do not have access to this assessment.');
+        } else {
+          setTestError(errMsg || 'Failed to load assessment. Please check your network connection.');
+        }
       } finally {
         setLoading(false);
       }
@@ -101,19 +165,33 @@ export default function TakeTest() {
     return () => {
       if (socket) socket.disconnect();
     };
-  }, [testId, navigate]);
+  }, [testId]);
+
+  // Persist current question index in sessionStorage
+  useEffect(() => {
+    if (attemptId && currentQIndex >= 0) {
+      sessionStorage.setItem(`attempt_${attemptId}_qIndex`, currentQIndex.toString());
+    }
+  }, [currentQIndex, attemptId]);
 
   // Tab switch & visibility change detector
+  // IMPORTANT: Will NOT trigger when submitting, submitted, or in result view
   useEffect(() => {
     if (!attemptId || isDisqualified || showResults) return;
 
     const handleTabViolation = () => {
+      if (isSubmittingRef.current || hasSubmittedRef.current || isDisqualified || showResults) {
+        return;
+      }
       if (document.hidden && socketRef.current) {
         socketRef.current.emit('tab-switch', { attemptId, studentId: user?.id });
       }
     };
 
     const handleWindowBlur = () => {
+      if (isSubmittingRef.current || hasSubmittedRef.current || isDisqualified || showResults) {
+        return;
+      }
       if (socketRef.current) {
         socketRef.current.emit('tab-switch', { attemptId, studentId: user?.id });
       }
@@ -130,13 +208,13 @@ export default function TakeTest() {
 
   // Countdown timer with auto-submit on expiration
   useEffect(() => {
-    if (loading || isDisqualified || showResults) return;
+    if (loading || isDisqualified || showResults || timeLeft <= 0) return;
 
     timerRef.current = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
           clearInterval(timerRef.current);
-          handleAutoSubmit();
+          handleAutoSubmit(attemptId);
           return 0;
         }
         return prev - 1;
@@ -144,10 +222,10 @@ export default function TakeTest() {
     }, 1000);
 
     return () => clearInterval(timerRef.current);
-  }, [loading, isDisqualified, showResults]);
+  }, [loading, isDisqualified, showResults, attemptId]);
 
   const handleSelectAnswer = async (questionId, option) => {
-    if (isDisqualified || submitting) return;
+    if (isDisqualified || submitting || isSubmittingRef.current) return;
 
     // Optimistically update UI
     setAnswers((prev) => ({ ...prev, [questionId]: option }));
@@ -163,7 +241,7 @@ export default function TakeTest() {
   };
 
   const handleClearAnswer = async (questionId) => {
-    if (isDisqualified || submitting) return;
+    if (isDisqualified || submitting || isSubmittingRef.current) return;
 
     setAnswers((prev) => {
       const next = { ...prev };
@@ -176,24 +254,46 @@ export default function TakeTest() {
         questionId,
         selectedAnswer: null
       });
-    } catch (err) {}
+    } catch (err) {
+      console.error('Failed to clear answer:', err);
+    }
   };
 
-  const handleAutoSubmit = async () => {
-    toast.error('Allotted test time has elapsed! Auto-submitting assessment...');
-    await submitTest();
+  const handleAutoSubmit = async (activeAttemptId) => {
+    toast.error('Allotted test time has elapsed! Submitting assessment...');
+    await executeSubmission(activeAttemptId || attemptId);
   };
 
-  const submitTest = async () => {
-    if (submitting || !attemptId) return;
+  const executeSubmission = async (targetAttemptId) => {
+    const aid = targetAttemptId || attemptId;
+    if (isSubmittingRef.current || hasSubmittedRef.current || !aid) return;
+
+    // Set submission guard flags immediately to block tab-switch listeners
+    isSubmittingRef.current = true;
     setSubmitting(true);
+    setShowConfirmModal(false);
+
+    // Stop timer
+    if (timerRef.current) clearInterval(timerRef.current);
+
+    // Leave proctoring room
+    if (socketRef.current) {
+      try {
+        socketRef.current.emit('leave-attempt', aid);
+      } catch (e) {}
+    }
+
     try {
-      const res = await api.post(`/attempts/${attemptId}/submit`);
+      const res = await api.post(`/attempts/${aid}/submit`);
+      hasSubmittedRef.current = true;
       setScoreResult(res.data);
       setShowResults(true);
       toast.success('Assessment submitted successfully!');
+      if (aid) sessionStorage.removeItem(`attempt_${aid}_qIndex`);
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Submission error');
+      // Allow retry only if network error occurred
+      isSubmittingRef.current = false;
+      toast.error(err.response?.data?.error || 'Submission failed. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -206,12 +306,60 @@ export default function TakeTest() {
     return `${mins.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
+  // 1. Loading State
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="text-center">
+        <div className="text-center p-8 max-w-sm">
           <div className="w-10 h-10 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
           <p className="text-sm font-semibold text-slate-700">Setting up proctored test environment...</p>
+          <p className="text-xs text-slate-500 mt-1">Verifying attempt session and restoring answers</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Legitimate 404 - Test Not Found View
+  if (isTestNotFound) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+        <div className="max-w-md w-full bg-white rounded-2xl border border-slate-200 p-8 text-center shadow-sm">
+          <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto mb-4 border border-amber-200">
+            <AlertIcon className="w-7 h-7" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-900 mb-2">Assessment Not Found</h2>
+          <p className="text-xs text-slate-600 leading-relaxed mb-6">
+            The assessment ID <code className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-800 font-mono text-[11px]">{testId}</code> does not exist or has been removed by the instructor. Please verify the URL or select an active assessment from your dashboard.
+          </p>
+          <button
+            onClick={() => navigate('/student')}
+            className="btn-primary w-full py-2.5 text-xs font-semibold"
+          >
+            Back to Student Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // 3. Error / Access Denied State (403 or server error)
+  if (testError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+        <div className="max-w-md w-full bg-white rounded-2xl border border-slate-200 p-8 text-center shadow-sm">
+          <div className="w-14 h-14 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center mx-auto mb-4 border border-red-200">
+            <AlertIcon className="w-7 h-7" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-900 mb-2">Assessment Unavailable</h2>
+          <p className="text-xs text-slate-600 leading-relaxed mb-6">
+            {testError}
+          </p>
+          <button
+            onClick={() => navigate('/student')}
+            className="btn-primary w-full py-2.5 text-xs font-semibold"
+          >
+            Return to Dashboard
+          </button>
         </div>
       </div>
     );
@@ -219,6 +367,7 @@ export default function TakeTest() {
 
   const currentQ = questions[currentQIndex];
   const answeredCount = Object.keys(answers).length;
+  const unansweredCount = questions.length - answeredCount;
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 font-sans text-slate-800">
@@ -259,11 +408,7 @@ export default function TakeTest() {
           </div>
 
           <button
-            onClick={() => {
-              if (window.confirm('Are you sure you want to submit your assessment? Once submitted, answers cannot be modified.')) {
-                submitTest();
-              }
-            }}
+            onClick={() => setShowConfirmModal(true)}
             disabled={submitting}
             className="btn-primary text-xs py-2 px-4"
           >
@@ -419,16 +564,63 @@ export default function TakeTest() {
 
           <div className="pt-4 border-t border-slate-100 mt-4 text-center">
             <div className="p-3 bg-slate-50 rounded-lg text-[11px] text-slate-500">
-              <p className="font-semibold text-slate-700">Exam Instructions</p>
+              <p className="font-semibold text-slate-700">Exam Integrity Notice</p>
               <p className="mt-1 leading-normal">
-                Do not switch browser tabs or minimize the window. A single tab switch warning will be issued before disqualification.
+                Do not switch browser tabs or minimize window during the examination.
               </p>
             </div>
           </div>
         </aside>
       </div>
 
-      {/* Warning Modal */}
+      {/* In-App Confirmation Modal (Replaces window.confirm) */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 text-center shadow-2xl border border-slate-200 animate-in zoom-in-95 duration-150">
+            <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-3 border border-blue-100">
+              <ShieldCheckIcon className="w-6 h-6" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-900 mb-1">Submit Assessment?</h3>
+            <p className="text-xs text-slate-500 mb-5">
+              Please confirm that you want to finish and submit your test.
+            </p>
+
+            <div className="grid grid-cols-2 gap-3 mb-5 p-3.5 bg-slate-50 rounded-xl border border-slate-200/80 text-left">
+              <div>
+                <span className="text-[11px] text-slate-500 font-medium block">Answered</span>
+                <span className="text-base font-bold text-emerald-600">{answeredCount} questions</span>
+              </div>
+              <div>
+                <span className="text-[11px] text-slate-500 font-medium block">Unanswered</span>
+                <span className="text-base font-bold text-amber-600">{unansweredCount} questions</span>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-slate-500 mb-6">
+              Once submitted, your answers are finalized and cannot be modified.
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowConfirmModal(false)}
+                disabled={submitting}
+                className="btn-secondary flex-1 py-2.5 text-xs font-semibold"
+              >
+                Review Answers
+              </button>
+              <button
+                onClick={() => executeSubmission(attemptId)}
+                disabled={submitting}
+                className="btn-primary flex-1 py-2.5 text-xs font-semibold"
+              >
+                {submitting ? 'Submitting...' : 'Yes, Submit Test'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tab Switch Warning Modal */}
       {showWarning && (
         <div className="fixed inset-0 bg-slate-900/70 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 text-center shadow-xl border border-amber-200 animate-in fade-in zoom-in duration-150">

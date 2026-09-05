@@ -9,32 +9,87 @@ router.use(authenticate);
 router.post('/', async (req, res) => {
   try {
     const { testId, isRetake } = req.body;
-    const test = await prisma.test.findUnique({ 
+    if (!testId) {
+      return res.status(400).json({ error: 'Assessment ID is required' });
+    }
+
+    let test = await prisma.test.findUnique({ 
       where: { id: testId },
       include: { questions: true }
     });
-    
-    if (!test || !test.isActive) return res.status(400).json({ error: 'Test not available' });
-    if (test.deadline && new Date() > new Date(test.deadline)) return res.status(400).json({ error: 'Test deadline passed' });
 
-    // Check if there is an in-progress attempt for this student & test
+    // Check if testId was actually an attemptId passed directly in the URL
+    if (!test) {
+      const existingAttempt = await prisma.testAttempt.findUnique({
+        where: { id: testId },
+        include: { test: { include: { questions: true } } }
+      });
+      if (existingAttempt) {
+        test = existingAttempt.test;
+      }
+    }
+    
+    // Legitimate 404 for non-existent assessment URLs
+    if (!test) {
+      return res.status(404).json({ error: 'Assessment not found. This test link does not exist or has been removed.' });
+    }
+
+    if (!test.isActive) {
+      return res.status(403).json({ error: 'This assessment is currently inactive and not available for taking.' });
+    }
+
+    if (test.deadline && new Date() > new Date(test.deadline)) {
+      return res.status(403).json({ error: 'The deadline for this assessment has passed.' });
+    }
+
+    // 1. Check if there is an in-progress attempt for this student & test
     let attempt = await prisma.testAttempt.findFirst({
-      where: { testId, studentId: req.user.id, status: 'IN_PROGRESS' },
+      where: { testId: test.id, studentId: req.user.id, status: 'IN_PROGRESS' },
       orderBy: { createdAt: 'desc' }
     });
 
-    // If no in-progress attempt, create a new attempt
+    // 2. Prevent duplicate attempt creation on refresh if already submitted and not explicitly retaking
+    if (!attempt && !isRetake) {
+      const completedAttempt = await prisma.testAttempt.findFirst({
+        where: { testId: test.id, studentId: req.user.id, status: 'COMPLETED' },
+        orderBy: { submittedAt: 'desc' }
+      });
+
+      if (completedAttempt) {
+        const answers = await prisma.studentAnswer.findMany({
+          where: { attemptId: completedAttempt.id },
+          include: { 
+            question: {
+              select: { id: true, questionText: true, optionA: true, optionB: true, optionC: true, optionD: true, marks: true, negativeMarks: true, topic: true, sourceExam: true }
+            }
+          }
+        });
+
+        const attemptWithTest = await prisma.testAttempt.findUnique({
+          where: { id: completedAttempt.id },
+          include: { test: { select: { id: true, title: true, duration: true } } }
+        });
+
+        return res.json({ 
+          attempt: attemptWithTest, 
+          answers, 
+          isAlreadyCompleted: true 
+        });
+      }
+    }
+
+    // 3. If no in-progress attempt, create a new attempt
     if (!attempt) {
       // Calculate attempt number
       const previousAttemptsCount = await prisma.testAttempt.count({
-        where: { testId, studentId: req.user.id }
+        where: { testId: test.id, studentId: req.user.id }
       });
       const nextAttemptNumber = previousAttemptsCount + 1;
 
       attempt = await prisma.testAttempt.create({
         data: {
           studentId: req.user.id,
-          testId,
+          testId: test.id,
           attemptNumber: nextAttemptNumber,
           startedAt: new Date()
         }
@@ -51,7 +106,7 @@ router.post('/', async (req, res) => {
       where: { attemptId: attempt.id },
       include: { 
         question: {
-          select: { id: true, questionText: true, optionA: true, optionB: true, optionC: true, optionD: true, marks: true, negativeMarks: true }
+          select: { id: true, questionText: true, optionA: true, optionB: true, optionC: true, optionD: true, marks: true, negativeMarks: true, topic: true, sourceExam: true }
         }
       }
     });
@@ -62,9 +117,10 @@ router.post('/', async (req, res) => {
       include: { test: { select: { id: true, title: true, duration: true } } }
     });
 
-    res.json({ attempt: attemptWithTest, answers });
+    res.json({ attempt: attemptWithTest, answers, isAlreadyCompleted: false });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to start attempt' });
+    console.error('Failed to start or resume attempt:', err);
+    res.status(500).json({ error: 'Failed to start or resume attempt' });
   }
 });
 

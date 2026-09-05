@@ -1,4 +1,6 @@
 require('dotenv').config();
+const path = require('path');
+const fs = require('fs');
 const express = require('express');
 const { createServer } = require('http');
 const { Server } = require('socket.io');
@@ -55,19 +57,28 @@ io.on('connection', (socket) => {
     socket.join(`attempt-${attemptId}`);
     socket.data.attemptId = attemptId;
   });
+
+  socket.on('leave-attempt', (attemptId) => {
+    if (attemptId) {
+      socket.leave(`attempt-${attemptId}`);
+    }
+  });
   
   socket.on('tab-switch', async (data) => {
-    const { attemptId, studentId } = data;
+    const { attemptId, studentId } = data || {};
+    if (!attemptId || !studentId) return;
+
     try {
       const attempt = await prisma.testAttempt.findUnique({
         where: { id: attemptId },
         include: { test: true }
       });
       
+      // If attempt is null, or already completed/disqualified, ignore any tab-switch signals
       if (!attempt || attempt.status !== 'IN_PROGRESS') return;
       if (attempt.studentId !== studentId) return;
       
-      const warningsAllowed = attempt.test.warningsAllowed;
+      const warningsAllowed = attempt.test?.warningsAllowed ?? 1;
       
       if (!attempt.warningGiven && warningsAllowed > 0) {
         // Give warning
@@ -99,6 +110,18 @@ io.on('connection', (socket) => {
     console.log('Socket disconnected:', socket.id);
   });
 });
+
+// Serve static React frontend in production or if build exists
+const clientDistPath = path.join(__dirname, '../../client/dist');
+if (fs.existsSync(clientDistPath)) {
+  app.use(express.static(clientDistPath));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api') || req.path.startsWith('/socket.io')) {
+      return next();
+    }
+    res.sendFile(path.join(clientDistPath, 'index.html'));
+  });
+}
 
 // Error handler
 app.use((err, req, res, next) => {

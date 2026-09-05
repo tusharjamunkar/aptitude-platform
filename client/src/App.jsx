@@ -14,6 +14,7 @@ import TakeTest from './pages/student/TakeTest';
 import StudentAnalytics from './pages/student/StudentAnalytics';
 import StudentMilestones from './pages/student/StudentMilestones';
 import TestHistory from './pages/student/TestHistory';
+import NotFound from './pages/NotFound';
 import Layout from './components/Layout';
 
 function ProtectedRoute({ children, role }) {
@@ -53,7 +54,7 @@ function AppRoutes() {
       <Route path="/take-test/:testId" element={<ProtectedRoute role="STUDENT"><TakeTest /></ProtectedRoute>} />
       
       <Route path="/" element={<Navigate to={user ? (user.role === 'TEACHER' ? '/teacher' : '/student') : '/login'} />} />
-      <Route path="*" element={<Navigate to="/" />} />
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 }
