@@ -9,10 +9,73 @@ router.use(authenticate, requireTeacher);
 router.get('/', async (req, res) => {
   try {
     const questions = await prisma.question.findMany({
-      where: { createdBy: req.user.id }
+      where: { createdBy: req.user.id },
+      include: {
+        test: {
+          select: { id: true, title: true, subject: true, topic: true, createdAt: true }
+        },
+        answers: {
+          select: {
+            attempt: {
+              select: {
+                test: {
+                  select: { id: true, title: true, subject: true, topic: true, createdAt: true }
+                }
+              }
+            }
+          }
+        }
+      }
     });
-    res.json(questions);
+
+    // Format questions with explicit usage history
+    const formatted = questions.map((q) => {
+      const testsMap = new Map();
+      if (q.test) {
+        testsMap.set(q.test.id, {
+          id: q.test.id,
+          title: q.test.title,
+          subject: q.test.subject,
+          topic: q.test.topic,
+          date: q.test.createdAt
+        });
+      }
+
+      if (q.answers && Array.isArray(q.answers)) {
+        q.answers.forEach((ans) => {
+          const t = ans.attempt?.test;
+          if (t && !testsMap.has(t.id)) {
+            testsMap.set(t.id, {
+              id: t.id,
+              title: t.title,
+              subject: t.subject,
+              topic: t.topic,
+              date: t.createdAt
+            });
+          }
+        });
+      }
+
+      const usedInTests = Array.from(testsMap.values()).sort(
+        (a, b) => new Date(b.date) - new Date(a.date)
+      );
+      const usageCount = usedInTests.length;
+      const isUsed = usageCount > 0;
+      const lastUsed = isUsed ? usedInTests[0] : null;
+
+      return {
+        ...q,
+        answers: undefined, // remove raw answers to keep response lightweight
+        isUsed,
+        usageCount,
+        lastUsed,
+        usedInTests
+      };
+    });
+
+    res.json(formatted);
   } catch (err) {
+    console.error('Failed to fetch questions with usage:', err);
     res.status(500).json({ error: 'Failed to fetch questions' });
   }
 });

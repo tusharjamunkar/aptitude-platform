@@ -11,6 +11,7 @@ export default function QuestionBank() {
   const [search, setSearch] = useState('');
   const [topicFilter, setTopicFilter] = useState('All');
   const [difficultyFilter, setDifficultyFilter] = useState('All');
+  const [usageFilter, setUsageFilter] = useState('All'); // 'All' | 'UNUSED' | 'USED'
   const [showModal, setShowModal] = useState(false);
   const [editingQ, setEditingQ] = useState(null);
 
@@ -338,7 +339,13 @@ export default function QuestionBank() {
       (q.sourceExam && q.sourceExam.toLowerCase().includes(search.toLowerCase()));
     const matchesTopic = topicFilter === 'All' || q.topic === topicFilter;
     const matchesDiff = difficultyFilter === 'All' || q.difficulty === difficultyFilter;
-    return matchesSearch && matchesTopic && matchesDiff;
+    const matchesUsage =
+      usageFilter === 'All'
+        ? true
+        : usageFilter === 'UNUSED'
+        ? !q.isUsed
+        : Boolean(q.isUsed);
+    return matchesSearch && matchesTopic && matchesDiff && matchesUsage;
   });
 
   return (
@@ -348,7 +355,7 @@ export default function QuestionBank() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Question Bank</h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Central repository of 45 previous-year aptitude problems and departmental questions
+            Central repository of previous-year aptitude problems and departmental questions
           </p>
         </div>
 
@@ -408,6 +415,16 @@ export default function QuestionBank() {
             <option value="HARD">Hard</option>
           </select>
 
+          <select
+            value={usageFilter}
+            onChange={(e) => setUsageFilter(e.target.value)}
+            className="select-field text-xs py-2 w-full sm:w-auto font-medium text-indigo-700"
+          >
+            <option value="All">All Usage</option>
+            <option value="UNUSED">🟢 Unused Questions</option>
+            <option value="USED">↻ Previously Used</option>
+          </select>
+
           <span className="text-xs font-semibold text-slate-500 ml-1">
             {filteredQuestions.length} Questions
           </span>
@@ -457,6 +474,17 @@ export default function QuestionBank() {
                   >
                     {q.difficulty}
                   </span>
+
+                  {/* Question Usage Badge */}
+                  {!q.isUsed ? (
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full flex items-center gap-1">
+                      ✓ UNUSED
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-bold text-slate-700 bg-slate-200/80 px-2 py-0.5 rounded-full flex items-center gap-1" title={q.lastUsed ? `Last used in: ${q.lastUsed.title}` : ''}>
+                      ↻ USED {q.usageCount} {q.usageCount === 1 ? 'TIME' : 'TIMES'}
+                    </span>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-2">
