@@ -102,11 +102,24 @@ export default function TakeTest() {
         }));
         setQuestions(mappedQuestions);
 
-        // Preload existing answers saved in DB (ensures zero data loss on refresh)
+        // Preload existing answers saved in DB, merged with local attempt-specific buffer for zero data loss
         const answerMap = {};
         initialAnswers.forEach((a) => {
           if (a.selectedAnswer) answerMap[a.question.id] = a.selectedAnswer;
         });
+
+        // If local storage has any buffered answers for this specific attempt & user, merge them
+        if (user?.id) {
+          try {
+            const cachedRaw = sessionStorage.getItem(`attempt_${attempt.id}_answers_${user.id}`);
+            if (cachedRaw) {
+              const cached = JSON.parse(cachedRaw);
+              if (cached && typeof cached === 'object') {
+                Object.assign(answerMap, cached);
+              }
+            }
+          } catch (e) {}
+        }
         setAnswers(answerMap);
 
         // Restore active question index from sessionStorage if available
@@ -184,13 +197,50 @@ export default function TakeTest() {
     }
   }, [currentQIndex, attemptId]);
 
+  // Ref to track any pending unsaved answers for unload flushing
+  const pendingAnswerRef = useRef(null);
+  const isUnloadingRef = useRef(false);
+
+  // Suppress false positive proctoring violations during page reload
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      isUnloadingRef.current = true;
+      // If there's an in-flight answer selection during reload, flush it via fetch keepalive
+      if (pendingAnswerRef.current && attemptId) {
+        const { questionId, selectedAnswer } = pendingAnswerRef.current;
+        const apiUrl = import.meta.env.VITE_API_URL 
+          ? `${import.meta.env.VITE_API_URL}/api/attempts/${attemptId}/answer`
+          : `/api/attempts/${attemptId}/answer`;
+        const token = localStorage.getItem('token');
+        try {
+          fetch(apiUrl, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify({ questionId, selectedAnswer }),
+            keepalive: true
+          });
+        } catch (e) {
+          // ignore keepalive network error on unload
+        }
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [attemptId]);
+
   // Tab switch & visibility change detector
-  // IMPORTANT: Will NOT trigger when submitting, submitted, or in result view
+  // IMPORTANT: Will NOT trigger when submitting, submitted, unloading/refreshing, or in result view
   useEffect(() => {
     if (!attemptId || isDisqualified || showResults) return;
 
     const handleTabViolation = () => {
-      if (isSubmittingRef.current || hasSubmittedRef.current || isDisqualified || showResults) {
+      if (isSubmittingRef.current || hasSubmittedRef.current || isUnloadingRef.current || isDisqualified || showResults) {
         return;
       }
       if (document.hidden && socketRef.current) {
@@ -199,7 +249,7 @@ export default function TakeTest() {
     };
 
     const handleWindowBlur = () => {
-      if (isSubmittingRef.current || hasSubmittedRef.current || isDisqualified || showResults) {
+      if (isSubmittingRef.current || hasSubmittedRef.current || isUnloadingRef.current || isDisqualified || showResults) {
         return;
       }
       if (socketRef.current) {
@@ -237,14 +287,30 @@ export default function TakeTest() {
   const handleSelectAnswer = async (questionId, option) => {
     if (isDisqualified || submitting || isSubmittingRef.current) return;
 
-    // Optimistically update UI
-    setAnswers((prev) => ({ ...prev, [questionId]: option }));
+    // 1. Optimistically update React state
+    setAnswers((prev) => {
+      const next = { ...prev, [questionId]: option };
+      // 2. Persist synchronously in attempt-specific sessionStorage
+      if (attemptId && user?.id) {
+        try {
+          sessionStorage.setItem(`attempt_${attemptId}_answers_${user.id}`, JSON.stringify(next));
+        } catch (e) {}
+      }
+      return next;
+    });
 
+    // Track pending save for reload safety
+    pendingAnswerRef.current = { questionId, selectedAnswer: option };
+
+    // 3. Persist to backend database via REST API
     try {
       await api.put(`/attempts/${attemptId}/answer`, {
         questionId,
         selectedAnswer: option
       });
+      if (pendingAnswerRef.current?.questionId === questionId) {
+        pendingAnswerRef.current = null;
+      }
     } catch (err) {
       console.error('Failed to save answer:', err);
     }
@@ -256,14 +322,24 @@ export default function TakeTest() {
     setAnswers((prev) => {
       const next = { ...prev };
       delete next[questionId];
+      if (attemptId && user?.id) {
+        try {
+          sessionStorage.setItem(`attempt_${attemptId}_answers_${user.id}`, JSON.stringify(next));
+        } catch (e) {}
+      }
       return next;
     });
+
+    pendingAnswerRef.current = { questionId, selectedAnswer: null };
 
     try {
       await api.put(`/attempts/${attemptId}/answer`, {
         questionId,
         selectedAnswer: null
       });
+      if (pendingAnswerRef.current?.questionId === questionId) {
+        pendingAnswerRef.current = null;
+      }
     } catch (err) {
       console.error('Failed to clear answer:', err);
     }
@@ -299,7 +375,10 @@ export default function TakeTest() {
       setScoreResult(res.data);
       setShowResults(true);
       toast.success('Assessment submitted successfully!');
-      if (aid) sessionStorage.removeItem(`attempt_${aid}_qIndex`);
+      if (aid) {
+        sessionStorage.removeItem(`attempt_${aid}_qIndex`);
+        if (user?.id) sessionStorage.removeItem(`attempt_${aid}_answers_${user.id}`);
+      }
     } catch (err) {
       // Allow retry only if network error occurred
       isSubmittingRef.current = false;
@@ -325,6 +404,7 @@ export default function TakeTest() {
       setAttemptId(newAttempt.id);
       setTestTitle(newAttempt.test?.title || 'Aptitude Assessment');
       sessionStorage.removeItem(`attempt_${newAttempt.id}_qIndex`);
+      if (user?.id) sessionStorage.removeItem(`attempt_${newAttempt.id}_answers_${user.id}`);
 
       const mappedQuestions = newAnswers.map((a) => ({
         id: a.question.id,
