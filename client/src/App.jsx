@@ -8,6 +8,7 @@ import QuestionBank from './pages/teacher/QuestionBank';
 import CreateTest from './pages/teacher/CreateTest';
 import TestResults from './pages/teacher/TestResults';
 import TeacherAnalytics from './pages/teacher/TeacherAnalytics';
+import AllStudents from './pages/teacher/AllStudents';
 import ManageMilestones from './pages/teacher/ManageMilestones';
 import StudentDashboard from './pages/student/StudentDashboard';
 import TakeTest from './pages/student/TakeTest';
@@ -80,7 +81,8 @@ function AppRoutes() {
         <Route path="tests/:id" element={<TestResults />} />
         <Route path="tests/:id/results" element={<TestResults />} />
         <Route path="analytics" element={<TeacherAnalytics />} />
-        <Route path="students" element={<TeacherAnalytics />} />
+        <Route path="students" element={<AllStudents />} />
+        <Route path="students-directory" element={<AllStudents />} />
         <Route path="results" element={<TeacherAnalytics />} />
         <Route path="milestones" element={<ManageMilestones />} />
       </Route>

@@ -10,7 +10,8 @@ import {
   HistoryIcon,
   AcademicCapIcon,
   LogoutIcon,
-  UserIcon
+  UserIcon,
+  UserGroupIcon
 } from './Icons';
 
 export default function Layout() {
@@ -28,6 +29,7 @@ export default function Layout() {
 
   const teacherLinks = [
     { to: '/teacher', icon: <DashboardIcon />, label: 'Dashboard' },
+    { to: '/teacher/students', icon: <UserGroupIcon />, label: 'All Students' },
     { to: '/teacher/questions', icon: <BookOpenIcon />, label: 'Question Bank' },
     { to: '/teacher/create-test', icon: <PlusIcon />, label: 'Create Assessment' },
     { to: '/teacher/analytics', icon: <ChartIcon />, label: 'Class Analytics' },

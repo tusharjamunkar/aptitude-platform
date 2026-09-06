@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import StatCard from '../../components/StatCard';
-import { BookOpenIcon, UserIcon, CheckCircleIcon, ClockIcon, PlusIcon, ClipboardListIcon } from '../../components/Icons';
+import { BookOpenIcon, UserIcon, UserGroupIcon, CheckCircleIcon, ClockIcon, PlusIcon, ClipboardListIcon } from '../../components/Icons';
 
 export default function TeacherDashboard() {
   const { user } = useAuth();
@@ -77,6 +77,13 @@ export default function TeacherDashboard() {
 
         <div className="flex items-center gap-2.5 flex-wrap">
           <button
+            onClick={() => navigate('/teacher/students')}
+            className="bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 text-xs font-semibold py-2 px-3.5 rounded-lg flex items-center gap-1.5 transition-colors shadow-xs"
+          >
+            <UserGroupIcon className="w-4 h-4 text-blue-600" />
+            <span>All Students</span>
+          </button>
+          <button
             onClick={() => navigate('/teacher/questions?mode=bulk')}
             className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 text-xs font-semibold py-2 px-3.5 rounded-lg flex items-center gap-1.5 transition-colors shadow-xs"
           >
@@ -108,13 +115,19 @@ export default function TeacherDashboard() {
           subtitle="Curated assessment suites"
           variant="primary"
         />
-        <StatCard
-          title="Students Evaluated"
-          value={stats.totalStudents}
-          icon={<UserIcon />}
-          subtitle="Unique student candidates"
-          variant="purple"
-        />
+        <div 
+          onClick={() => navigate('/teacher/students')} 
+          className="cursor-pointer hover:scale-[1.01] transition-transform"
+          title="View all students"
+        >
+          <StatCard
+            title="Students Evaluated"
+            value={stats.totalStudents}
+            icon={<UserIcon />}
+            subtitle="View student directory →"
+            variant="purple"
+          />
+        </div>
         <StatCard
           title="Cohort Average"
           value={`${stats.avgScore}%`}

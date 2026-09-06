@@ -147,4 +147,122 @@ router.get('/teacher', requireTeacher, async (req, res) => {
   }
 });
 
+// GET /api/analytics/teacher/students - Complete student directory with filters
+router.get('/teacher/students', requireTeacher, async (req, res) => {
+  try {
+    const { year, branch, search } = req.query;
+
+    const whereClause = {
+      role: 'STUDENT'
+    };
+
+    if (year && year !== 'All' && year !== 'All Years') {
+      whereClause.studyYear = year;
+    }
+
+    if (branch && branch !== 'All' && branch !== 'All Branches') {
+      whereClause.department = branch;
+    }
+
+    if (search && search.trim()) {
+      const q = search.trim();
+      whereClause.OR = [
+        { name: { contains: q, mode: 'insensitive' } },
+        { email: { contains: q, mode: 'insensitive' } },
+        { rollNumber: { contains: q, mode: 'insensitive' } }
+      ];
+    }
+
+    const students = await prisma.user.findMany({
+      where: whereClause,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        rollNumber: true,
+        studyYear: true,
+        department: true,
+        createdAt: true,
+        attempts: {
+          select: {
+            id: true,
+            score: true,
+            totalMarks: true,
+            status: true,
+            submittedAt: true,
+            createdAt: true,
+            test: {
+              select: {
+                id: true,
+                title: true
+              }
+            }
+          },
+          orderBy: { createdAt: 'desc' }
+        }
+      },
+      orderBy: [
+        { studyYear: 'asc' },
+        { department: 'asc' },
+        { rollNumber: 'asc' }
+      ]
+    });
+
+    // Compute student attempt performance summaries
+    const studentList = students.map(student => {
+      const completed = student.attempts.filter(a => a.status === 'COMPLETED');
+      let totalScore = 0;
+      let totalMarks = 0;
+
+      completed.forEach(a => {
+        totalScore += a.score;
+        totalMarks += a.totalMarks;
+      });
+
+      const avgScore = totalMarks > 0 ? Math.round((totalScore / totalMarks) * 100) : null;
+      const latestAttempt = student.attempts[0] || null;
+
+      return {
+        id: student.id,
+        name: student.name,
+        email: student.email,
+        rollNumber: student.rollNumber || 'N/A',
+        studyYear: student.studyYear || 'Unspecified',
+        department: student.department || 'General',
+        createdAt: student.createdAt,
+        totalAttempts: student.attempts.length,
+        completedTests: completed.length,
+        averageScore: avgScore,
+        latestActivity: latestAttempt ? (latestAttempt.submittedAt || latestAttempt.createdAt) : null
+      };
+    });
+
+    // Also compute distinct available years and branches across all students for dropdown options
+    const allStudentYears = await prisma.user.findMany({
+      where: { role: 'STUDENT', studyYear: { not: null } },
+      select: { studyYear: true },
+      distinct: ['studyYear']
+    });
+
+    const allStudentBranches = await prisma.user.findMany({
+      where: { role: 'STUDENT', department: { not: null } },
+      select: { department: true },
+      distinct: ['department']
+    });
+
+    const availableYears = allStudentYears.map(s => s.studyYear).filter(Boolean);
+    const availableBranches = allStudentBranches.map(s => s.department).filter(Boolean);
+
+    res.json({
+      students: studentList,
+      totalCount: studentList.length,
+      availableYears,
+      availableBranches
+    });
+  } catch (err) {
+    console.error('Error fetching teacher students directory:', err);
+    res.status(500).json({ error: 'Failed to fetch student directory' });
+  }
+});
+
 module.exports = router;
