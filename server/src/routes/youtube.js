@@ -1231,6 +1231,8 @@ router.get('/curriculum/taxonomy', (req, res) => {
   res.json(topicCurriculum);
 });
 
+const responseCache = new Map();
+
 router.get('/:topic', (req, res) => {
   const topicRaw = req.params.topic;
   if (!topicRaw) {
@@ -1238,6 +1240,9 @@ router.get('/:topic', (req, res) => {
   }
 
   const topic = topicRaw.toLowerCase().trim();
+  if (responseCache.has(topic)) {
+    return res.json(responseCache.get(topic));
+  }
 
   // Try exact match first
   let matchedKey = Object.keys(verifiedVideoDB).find(k => k === topic);
@@ -1286,13 +1291,16 @@ router.get('/:topic', (req, res) => {
     subtopic: subtopics[i % (subtopics.length || 1)] || 'Concept & Tricks'
   }));
 
-  res.json({
+  const payload = {
     subject,
     topic: canonicalTopic,
     subtopics,
     videos: enrichedVideos,
     studyTips: tips
-  });
+  };
+
+  responseCache.set(topic, payload);
+  res.json(payload);
 });
 
 module.exports = router;

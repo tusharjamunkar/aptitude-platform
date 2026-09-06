@@ -4,6 +4,16 @@ const { authenticate, requireTeacher, requireStudent } = require('../middleware/
 
 const prisma = new PrismaClient();
 
+// In-memory test cache with TTL to protect database pool from concurrency spikes
+let cachedActiveTests = null;
+let cachedActiveTestsTime = 0;
+const CACHE_TTL_MS = 15000; // 15 seconds
+
+function invalidateTestCache() {
+  cachedActiveTests = null;
+  cachedActiveTestsTime = 0;
+}
+
 // Teacher routes
 router.get('/', authenticate, requireTeacher, async (req, res) => {
   try {
@@ -32,6 +42,7 @@ router.post('/', authenticate, requireTeacher, async (req, res) => {
         questions: { connect: (questionIds || []).map(id => ({ id })) }
       }
     });
+    invalidateTestCache();
     res.status(201).json(test);
   } catch (err) {
     res.status(500).json({ error: 'Failed to create test' });
@@ -56,6 +67,7 @@ router.put('/:id', authenticate, requireTeacher, async (req, res) => {
         questions: { set: (questionIds || []).map(qId => ({ id: qId })) }
       }
     });
+    invalidateTestCache();
     res.json(updated);
   } catch (err) {
     res.status(500).json({ error: 'Failed to update test' });
@@ -69,6 +81,7 @@ router.delete('/:id', authenticate, requireTeacher, async (req, res) => {
     if (!test || test.createdBy !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
 
     await prisma.test.delete({ where: { id } });
+    invalidateTestCache();
     res.json({ message: 'Deleted successfully' });
   } catch (err) {
     res.status(500).json({ error: 'Failed to delete test' });
@@ -136,6 +149,7 @@ router.patch('/:id/activate', authenticate, requireTeacher, async (req, res) => 
       where: { id },
       data: { isActive }
     });
+    invalidateTestCache();
     res.json(updated);
   } catch (err) {
     res.status(500).json({ error: 'Failed to activate test' });
@@ -146,33 +160,66 @@ router.patch('/:id/activate', authenticate, requireTeacher, async (req, res) => 
 router.get('/available', authenticate, requireStudent, async (req, res) => {
   try {
     const now = new Date();
-    const tests = await prisma.test.findMany({
+    const nowMs = Date.now();
+
+    // 1. Fetch or reuse cached active test definitions (re-evaluates every 15s or on teacher mutation)
+    if (!cachedActiveTests || (nowMs - cachedActiveTestsTime) > CACHE_TTL_MS) {
+      cachedActiveTests = await prisma.test.findMany({
+        where: {
+          isActive: true,
+          AND: [
+            { OR: [{ scheduledAt: null }, { scheduledAt: { lte: now } }] },
+            { OR: [{ deadline: null }, { deadline: { gte: now } }] },
+          ]
+        },
+        include: { 
+          _count: { select: { questions: true } }
+        },
+        orderBy: { createdAt: 'desc' }
+      });
+      cachedActiveTestsTime = nowMs;
+    }
+
+    if (!cachedActiveTests.length) {
+      return res.json([]);
+    }
+
+    // 2. Fetch only the requesting student's attempts for these active tests (fast indexed lookup)
+    const testIds = cachedActiveTests.map(t => t.id);
+    const studentAttempts = await prisma.testAttempt.findMany({
       where: {
-        isActive: true,
-        AND: [
-          { OR: [{ scheduledAt: null }, { scheduledAt: { lte: now } }] },
-          { OR: [{ deadline: null }, { deadline: { gte: now } }] },
-        ]
+        studentId: req.user.id,
+        testId: { in: testIds }
       },
-      include: { 
-        _count: { select: { questions: true } },
-        attempts: {
-          where: { studentId: req.user.id },
-          orderBy: { createdAt: 'desc' },
-          select: {
-            id: true,
-            attemptNumber: true,
-            score: true,
-            totalMarks: true,
-            status: true,
-            createdAt: true
-          }
-        }
-      },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        testId: true,
+        attemptNumber: true,
+        score: true,
+        totalMarks: true,
+        status: true,
+        createdAt: true
+      }
     });
-    res.json(tests);
+
+    // Group attempts by testId
+    const attemptsByTestId = new Map();
+    for (const att of studentAttempts) {
+      if (!attemptsByTestId.has(att.testId)) {
+        attemptsByTestId.set(att.testId, []);
+      }
+      attemptsByTestId.get(att.testId).push(att);
+    }
+
+    const merged = cachedActiveTests.map(test => ({
+      ...test,
+      attempts: attemptsByTestId.get(test.id) || []
+    }));
+
+    res.json(merged);
   } catch (err) {
+    console.error('Available tests error:', err);
     res.status(500).json({ error: 'Failed to fetch available tests' });
   }
 });

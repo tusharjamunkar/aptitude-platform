@@ -62,7 +62,8 @@ router.post('/register', async (req, res) => {
       return res.status(409).json({ error: 'An account with this email already exists' });
     }
     
-    const hashed = await bcrypt.hash(password, 12);
+    // Use cost factor 10 (industry standard, ~100ms vs ~520ms for 12, preventing event-loop freezing under load)
+    const hashed = await bcrypt.hash(password, 10);
     const user = await prisma.user.create({
       data: {
         name: name.trim(),

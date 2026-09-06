@@ -20,11 +20,16 @@ const prisma = new PrismaClient();
 const app = express();
 const httpServer = createServer(app);
 
+// Trust reverse proxy (Render, Cloudflare, load balancers) so X-Forwarded-For is properly respected
+app.set('trust proxy', 1);
+
 const io = new Server(httpServer, {
   cors: {
     origin: process.env.CLIENT_URL || '*',
     methods: ['GET', 'POST']
-  }
+  },
+  pingTimeout: 20000,
+  pingInterval: 25000
 });
 
 // Export io for use in controllers
@@ -35,8 +40,39 @@ app.set('prisma', prisma);
 app.use(cors({ origin: process.env.CLIENT_URL || '*', credentials: true }));
 app.use(express.json());
 
-const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200 });
-app.use('/api/', limiter);
+// Tier 1: High-capacity Auth Limiter (allows 2,000 requests per 15 min for registration/login spikes)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 2000,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many login attempts from this network. Please try again shortly.' }
+});
+
+// Tier 2: General API Limiter (10,000 requests per 15 min)
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10000,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests. Please slow down.' }
+});
+
+// Tier 3: Exam Taking & Attempt Answering Limiter
+// KEYED BY STUDENT ID (or IP as fallback) so 500 students in the same room/campus never interfere with each other
+const attemptLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10000,
+  keyGenerator: (req) => req.user?.id || req.ip || 'anonymous',
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Exceeded rate limit for test submissions. Please wait a moment.' }
+});
+
+// Apply rate limiting tiers
+app.use('/api/auth/', authLimiter);
+app.use('/api/attempts/', attemptLimiter);
+app.use('/api/', generalLimiter);
 
 // Routes
 app.use('/api/auth', authRoutes);
