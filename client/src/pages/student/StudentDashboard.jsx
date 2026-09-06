@@ -201,10 +201,17 @@ export default function StudentDashboard() {
                       <span className="text-[11px] font-semibold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200/60">
                         {test.subject || 'Aptitude'}
                       </span>
-                      <span className="text-[11px] font-medium text-slate-500 flex items-center gap-1">
-                        <ClockIcon className="w-3.5 h-3.5 text-slate-400" />
-                        <span>{test.duration || 45} mins</span>
-                      </span>
+                      <div className="flex items-center gap-2">
+                        {test._count?.questions > 0 && (
+                          <span className="text-[11px] font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
+                            {test._count.questions} Qs
+                          </span>
+                        )}
+                        <span className="text-[11px] font-medium text-slate-500 flex items-center gap-1">
+                          <ClockIcon className="w-3.5 h-3.5 text-slate-400" />
+                          <span>{test.duration || 45} mins</span>
+                        </span>
+                      </div>
                     </div>
 
                     <h3 className="text-base font-bold text-slate-900 leading-snug mb-1.5 line-clamp-2">

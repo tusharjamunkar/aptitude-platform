@@ -11,7 +11,7 @@ router.get('/', async (req, res) => {
     const questions = await prisma.question.findMany({
       where: { createdBy: req.user.id },
       include: {
-        test: {
+        tests: {
           select: { id: true, title: true, subject: true, topic: true, createdAt: true }
         },
         answers: {
@@ -31,13 +31,15 @@ router.get('/', async (req, res) => {
     // Format questions with explicit usage history
     const formatted = questions.map((q) => {
       const testsMap = new Map();
-      if (q.test) {
-        testsMap.set(q.test.id, {
-          id: q.test.id,
-          title: q.test.title,
-          subject: q.test.subject,
-          topic: q.test.topic,
-          date: q.test.createdAt
+      if (Array.isArray(q.tests)) {
+        q.tests.forEach(t => {
+          testsMap.set(t.id, {
+            id: t.id,
+            title: t.title,
+            subject: t.subject,
+            topic: t.topic,
+            date: t.createdAt
+          });
         });
       }
 

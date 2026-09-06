@@ -52,6 +52,23 @@ export default function TeacherDashboard() {
     }
   };
 
+  const handleDeleteTest = async (testId, title) => {
+    if (!window.confirm(`Are you sure you want to delete the test "${title}"? This will also remove any attempts associated with this test.`)) {
+      return;
+    }
+    try {
+      await api.delete(`/tests/${testId}`);
+      setTests((prev) => prev.filter((t) => t.id !== testId));
+      setStats((prev) => ({
+        ...prev,
+        totalTests: Math.max(0, prev.totalTests - 1)
+      }));
+    } catch (err) {
+      console.error('Failed to delete test:', err);
+      alert(err.response?.data?.error || 'Failed to delete test');
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header Banner */}
@@ -222,12 +239,29 @@ export default function TeacherDashboard() {
                       </button>
                     </td>
                     <td className="py-3.5 px-4 text-right">
-                      <button
-                        onClick={() => navigate(`/teacher/tests/${test.id}/results`)}
-                        className="text-xs font-semibold text-blue-600 hover:text-blue-700 mr-3"
-                      >
-                        View Results →
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => navigate(`/teacher/tests/${test.id}/results`)}
+                          className="text-xs font-semibold text-blue-600 hover:text-blue-700"
+                          title="View student results and analytics"
+                        >
+                          Results →
+                        </button>
+                        <button
+                          onClick={() => navigate(`/teacher/create-test?edit=${test.id}`)}
+                          className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded"
+                          title="Edit test parameters and question selection"
+                        >
+                          ✏️ Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteTest(test.id, test.title)}
+                          className="text-xs font-semibold text-rose-600 hover:text-rose-800 bg-rose-50 hover:bg-rose-100 px-2 py-1 rounded"
+                          title="Delete test"
+                        >
+                          🗑️
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

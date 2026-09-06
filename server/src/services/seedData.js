@@ -605,80 +605,63 @@ async function seedDefaultData(prisma) {
       questionIds = existingQs.map(q => q.id);
     }
 
-    // 3. Ensure 3 distinct, authentic 45-minute tests exist with proper topic distributions:
-    // Test 1: Quantitative & Reasoning Fundamentals (45 Mins, 15 Questions)
-    // Test 2: Placement Intermediate Assessment (45 Mins, 15 Questions)
-    // Test 3: Advanced Competitive Aptitude Exam (45 Mins, 15 Questions)
-    // Plus the 45-question comprehensive assessment
-
-    const allQuestions = await prisma.question.findMany({
-      where: { createdBy: teacher.id },
-      orderBy: { id: 'asc' }
-    });
-
-    // Partition questions by difficulty and topic
-    const easyQs = allQuestions.filter(q => q.difficulty === 'EASY');
-    const medQs = allQuestions.filter(q => q.difficulty === 'MEDIUM');
-    const hardQs = allQuestions.filter(q => q.difficulty === 'HARD');
-
-    // Test 1: Fundamentals (15 questions - mostly EASY & foundational across Quant, Reasoning, Verbal)
-    const test1QIds = [
-      ...easyQs.slice(0, 10).map(q => q.id),
-      ...medQs.slice(0, 5).map(q => q.id)
-    ];
-
-    // Test 2: Intermediate (15 questions - balanced MEDIUM questions across Quant, Reasoning, Verbal)
-    const test2QIds = [
-      ...medQs.slice(5, 17).map(q => q.id),
-      ...hardQs.slice(0, 3).map(q => q.id)
-    ];
-
-    // Test 3: Advanced (15 questions - challenging MEDIUM & HARD competitive questions)
-    const test3QIds = [
-      ...hardQs.map(q => q.id),
-      ...medQs.slice(17, 17 + (15 - hardQs.length)).map(q => q.id)
-    ];
+    // 3. Ensure 5 distinct, authentic 45-minute tests exist with exactly 45 questions each:
+    // Test 1: Campus Placement Aptitude Assessment 1 (45 Questions, 45 Mins)
+    // Test 2: Quantitative & Analytical Reasoning Assessment 2 (45 Questions, 45 Mins)
+    // Test 3: Logical Reasoning & Critical Thinking Assessment 3 (45 Questions, 45 Mins)
+    // Test 4: National Qualifier Aptitude Mock Test 4 (45 Questions, 45 Mins)
+    // Test 5: Comprehensive Technical & General Aptitude Assessment 5 (45 Questions, 45 Mins)
 
     const testDefinitions = [
       {
-        title: 'Aptitude Test 1 – Fundamentals Assessment',
-        subject: 'Foundational Aptitude',
-        topic: 'Number Systems, Percentages, Series & Verbal Basics',
-        description: '45-minute core fundamentals assessment testing speed, basic arithmetic, numerical operations, and elementary deduction.',
+        title: 'Campus Placement Aptitude Assessment 1',
+        subject: 'General Aptitude',
+        topic: 'Quantitative, Logical & Verbal Aptitude',
+        description: 'Comprehensive 45-question assessment calibrated to TCS NQT, Infosys, and Wipro campus placement standards.',
         duration: 45,
         isActive: true,
         isMandatory: true,
-        questionIds: test1QIds.length >= 10 ? test1QIds : questionIds.slice(0, 15)
+        questionIds: questionIds.slice(0, 45)
       },
       {
-        title: 'Aptitude Test 2 – Intermediate Placement Assessment',
-        subject: 'Corporate Campus Placement',
-        topic: 'Profit & Loss, Time-Work, Speed-Distance, Syllogisms & Logic',
-        description: '45-minute intermediate assessment calibrated to TCS NQT, Infosys, and Wipro campus placement standards.',
+        title: 'Quantitative & Analytical Reasoning Assessment 2',
+        subject: 'Quantitative & Analytical Aptitude',
+        topic: 'Arithmetic, Algebra, Data Interpretation & Numerical Logic',
+        description: 'Rigorous 45-question test evaluating core quantitative skills, percentage calculations, time-speed-distance, and mathematical reasoning.',
         duration: 45,
         isActive: true,
         isMandatory: true,
-        questionIds: test2QIds.length >= 10 ? test2QIds : questionIds.slice(15, 30)
+        questionIds: questionIds.slice(0, 45)
       },
       {
-        title: 'Aptitude Test 3 – Advanced Competitive Aptitude',
-        subject: 'Advanced Aptitude & GATE',
-        topic: 'Permutations, Probability, Mixtures, Circular Seating & Critical Reasoning',
-        description: '45-minute advanced evaluation featuring higher-difficulty problem-solving from GATE Aptitude and top-tier corporate drives.',
+        title: 'Logical Reasoning & Critical Thinking Assessment 3',
+        subject: 'Logical & Deductive Aptitude',
+        topic: 'Syllogisms, Blood Relations, Seating Arrangement & Verbal Deduction',
+        description: 'Specialized 45-question examination focusing on analytical reasoning, pattern identification, and logical deduction.',
         duration: 45,
         isActive: true,
         isMandatory: false,
-        questionIds: test3QIds.length >= 10 ? test3QIds : questionIds.slice(30, 45)
+        questionIds: questionIds.slice(0, 45)
       },
       {
-        title: 'Comprehensive Aptitude Assessment (45 Questions)',
-        subject: 'Comprehensive Aptitude',
-        topic: 'Quantitative, Reasoning & Verbal',
-        description: 'Official 45-minute full previous-year aptitude exam comprising all 45 authentic questions from TCS NQT, Infosys, Wipro, Cognizant, and GATE.',
+        title: 'National Qualifier Aptitude Mock Test 4',
+        subject: 'Corporate Assessment Standards',
+        topic: 'TCS NQT, Infosys, Cognizant & Accenture Previous Years',
+        description: 'Official mock assessment featuring 45 authentic recruitment questions from top tier technology company drives.',
+        duration: 45,
+        isActive: true,
+        isMandatory: true,
+        questionIds: questionIds.slice(0, 45)
+      },
+      {
+        title: 'Comprehensive Technical & General Aptitude Assessment 5',
+        subject: 'Full Placement Suite',
+        topic: 'All-Inclusive Quantitative, Reasoning & Verbal Ability',
+        description: 'Full-length 45-question evaluation covering all sections with proctoring, automated scoring, and real-time analytics.',
         duration: 45,
         isActive: true,
         isMandatory: false,
-        questionIds: questionIds
+        questionIds: questionIds.slice(0, 45)
       }
     ];
 
@@ -712,7 +695,7 @@ async function seedDefaultData(prisma) {
             duration: 45,
             isActive: true,
             questions: {
-              connect: tDef.questionIds.map(id => ({ id }))
+              set: tDef.questionIds.map(id => ({ id }))
             }
           }
         });

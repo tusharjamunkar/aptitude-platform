@@ -65,8 +65,7 @@ model Question {
   difficulty    Difficulty @default(MEDIUM)
   negativeMarks Float    @default(0)
   sourceExam    String?  // e.g. 'TCS NQT 2023', 'Infosys 2022', 'GATE Aptitude'
-  testId        String?
-  test          Test?    @relation(fields: [testId], references: [id], onDelete: SetNull)
+  tests         Test[]
   createdBy     String
   teacher       User     @relation(fields: [createdBy], references: [id])
   answers       StudentAnswer[]

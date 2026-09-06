@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
 import { 
@@ -14,6 +14,10 @@ import BulkQuestionModal from '../../components/BulkQuestionModal';
 
 export default function CreateTest() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const editTestId = searchParams.get('edit') || searchParams.get('id');
+  const isEditMode = Boolean(editTestId);
+
   const [step, setStep] = useState(1);
   const [questions, setQuestions] = useState([]);
   const [selectedQuestions, setSelectedQuestions] = useState([]);
@@ -45,7 +49,38 @@ export default function CreateTest() {
 
   useEffect(() => {
     fetchQuestions();
-  }, []);
+    if (isEditMode) {
+      fetchTestForEdit(editTestId);
+    }
+  }, [editTestId]);
+
+  const fetchTestForEdit = async (testId) => {
+    try {
+      const res = await api.get(`/tests/${testId}`);
+      const test = res.data;
+      if (test) {
+        setFormData({
+          title: test.title || '',
+          subject: test.subject || 'Quantitative & Logical Aptitude',
+          studyYear: test.studyYear || 'All Years',
+          department: test.department || 'All Departments',
+          topic: test.topic || '',
+          description: test.description || '',
+          targetQuestionCount: test.questions?.length || 45,
+          duration: test.duration || 45,
+          isMandatory: test.isMandatory ?? true,
+          warningsAllowed: test.warningsAllowed ?? 1
+        });
+        if (test.questions && Array.isArray(test.questions)) {
+          setSelectedQuestions(test.questions.map((q) => q.id));
+        }
+        toast.success(`Loaded "${test.title}" for editing`);
+      }
+    } catch (err) {
+      console.error('Failed to load test for editing:', err);
+      toast.error('Failed to load test for editing');
+    }
+  };
 
   const fetchQuestions = async () => {
     try {
@@ -182,11 +217,16 @@ export default function CreateTest() {
         duration: parseInt(formData.duration) || 45,
         questionIds: selectedQuestions
       };
-      await api.post('/tests', payload);
-      toast.success('Assessment created and published successfully!');
+      if (isEditMode && editTestId) {
+        await api.put(`/tests/${editTestId}`, payload);
+        toast.success('Assessment updated successfully!');
+      } else {
+        await api.post('/tests', payload);
+        toast.success('Assessment created and published successfully!');
+      }
       navigate('/teacher');
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to create assessment');
+      toast.error(err.response?.data?.error || (isEditMode ? 'Failed to update assessment' : 'Failed to create assessment'));
     } finally {
       setSubmitting(false);
     }
@@ -311,17 +351,59 @@ export default function CreateTest() {
             </div>
 
             <div>
-              <label className="label-text">Target Question Count</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="label-text mb-0">Number of Questions <span className="text-rose-500">*</span></label>
+                <span className="text-[11px] text-slate-500 font-medium">
+                  {questions.length} available in bank
+                </span>
+              </div>
               <input
                 type="number"
                 min="1"
-                max="100"
-                className="input-field"
+                max={questions.length || 100}
+                className="input-field font-semibold text-slate-800"
                 value={formData.targetQuestionCount}
-                onChange={(e) =>
-                  setFormData({ ...formData, targetQuestionCount: parseInt(e.target.value) || 45 })
-                }
+                onChange={(e) => {
+                  const val = parseInt(e.target.value) || 1;
+                  setFormData({ ...formData, targetQuestionCount: val });
+                }}
               />
+              {/* Dynamic Preset Chips */}
+              <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                {[10, 15, 20, 25, 30, 45].map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, targetQuestionCount: Math.min(preset, questions.length || preset) })}
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded transition-colors ${
+                      formData.targetQuestionCount === preset
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                    }`}
+                  >
+                    {preset} Qs
+                  </button>
+                ))}
+                {questions.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, targetQuestionCount: questions.length })}
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded transition-colors ${
+                      formData.targetQuestionCount === questions.length
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700'
+                    }`}
+                    title="Select all available questions in the question bank"
+                  >
+                    All ({questions.length})
+                  </button>
+                )}
+              </div>
+              {formData.targetQuestionCount > questions.length && questions.length > 0 && (
+                <p className="text-[11px] text-rose-600 font-medium mt-1">
+                  ⚠️ Target exceeds total questions ({questions.length}) in bank. Add questions or adjust count.
+                </p>
+              )}
             </div>
           </div>
 
@@ -400,6 +482,15 @@ export default function CreateTest() {
               onClick={() => {
                 if (!formData.title.trim()) {
                   toast.error('Please enter a test title');
+                  return;
+                }
+                const count = parseInt(formData.targetQuestionCount) || 0;
+                if (count <= 0) {
+                  toast.error('Question count must be at least 1');
+                  return;
+                }
+                if (questions.length > 0 && count > questions.length) {
+                  toast.error(`Question count cannot exceed total questions available in bank (${questions.length})`);
                   return;
                 }
                 setStep(2);
