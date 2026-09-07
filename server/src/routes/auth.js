@@ -39,22 +39,21 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'Password must be at least 6 characters long' });
     }
     
-    const normalizedRole = role ? role.toUpperCase() : 'STUDENT';
-    if (!['TEACHER', 'STUDENT'].includes(normalizedRole)) {
-      return res.status(400).json({ error: 'Role must be TEACHER or STUDENT' });
+    if (role && role.toUpperCase() === 'TEACHER') {
+      return res.status(403).json({ error: 'Teacher self-registration is disabled. Faculty accounts are provisioned by the institution.' });
     }
+    
+    const normalizedRole = 'STUDENT';
 
     // Additional validations for student accounts
-    if (normalizedRole === 'STUDENT') {
-      if (!studyYear || !studyYear.trim()) {
-        return res.status(400).json({ error: 'Study Year is required for students' });
-      }
-      if (!department || !department.trim()) {
-        return res.status(400).json({ error: 'Department is required for students' });
-      }
-      if (!rollNumber || !rollNumber.trim()) {
-        return res.status(400).json({ error: 'Roll Number is required for students' });
-      }
+    if (!studyYear || !studyYear.trim()) {
+      return res.status(400).json({ error: 'Study Year is required for students' });
+    }
+    if (!department || !department.trim()) {
+      return res.status(400).json({ error: 'Department is required for students' });
+    }
+    if (!rollNumber || !rollNumber.trim()) {
+      return res.status(400).json({ error: 'Roll Number is required for students' });
     }
     
     const existing = await prisma.user.findUnique({ where: { email: email.trim().toLowerCase() } });

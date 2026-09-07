@@ -153,9 +153,9 @@ export default function Login() {
 
           <div className="mt-6 pt-6 border-t border-slate-100 text-center">
             <p className="text-xs text-slate-500">
-              New student or faculty member?{' '}
+              New student?{' '}
               <Link to="/register" className="font-semibold text-blue-600 hover:text-blue-700 transition-colors">
-                Create an account
+                Create a student account
               </Link>
             </p>
           </div>
