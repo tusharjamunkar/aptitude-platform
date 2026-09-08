@@ -83,7 +83,7 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/milestones', milestoneRoutes);
 app.use('/api/youtube', youtubeRoutes);
 
-app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date() }));
+app.get('/health', (req, res) => res.json({ status: 'ok', version: '1.0.2', timestamp: new Date() }));
 
 // Socket.io - Tab Switch Detection
 io.on('connection', (socket) => {
