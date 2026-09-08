@@ -112,26 +112,42 @@ router.delete('/:id', authenticate, requireTeacher, async (req, res) => {
   try {
     const { id } = req.params;
     const test = await prisma.test.findUnique({ where: { id } });
-    if (!test || test.createdBy !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
+    if (!test) return res.status(404).json({ error: 'Test not found' });
+    if (test.createdBy !== req.user.id && req.user.role !== 'TEACHER') {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
 
-    // Cascade delete any student answers and attempts for this test
-    await prisma.$transaction([
-      prisma.studentAnswer.deleteMany({
-        where: { attempt: { testId: id } }
-      }),
-      prisma.testAttempt.deleteMany({
+    // 1. Fetch all attempt IDs for this test
+    const attempts = await prisma.testAttempt.findMany({
+      where: { testId: id },
+      select: { id: true }
+    });
+    const attemptIds = attempts.map(a => a.id);
+
+    // 2. Cascade delete answers, attempts, disconnect questions, and delete test atomically
+    await prisma.$transaction(async (tx) => {
+      if (attemptIds.length > 0) {
+        await tx.studentAnswer.deleteMany({
+          where: { attemptId: { in: attemptIds } }
+        });
+      }
+      await tx.testAttempt.deleteMany({
         where: { testId: id }
-      }),
-      prisma.test.delete({
+      });
+      await tx.test.update({
+        where: { id },
+        data: { questions: { set: [] } }
+      }).catch(() => {});
+      await tx.test.delete({
         where: { id }
-      })
-    ]);
+      });
+    });
 
     invalidateTestCache();
     res.json({ message: 'Deleted successfully' });
   } catch (err) {
     console.error('Failed to delete test:', err);
-    res.status(500).json({ error: 'Failed to delete test' });
+    res.status(500).json({ error: err.message || 'Failed to delete test' });
   }
 });
 

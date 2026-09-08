@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
+import { toast } from 'react-hot-toast';
 import StatCard from '../../components/StatCard';
 import { BookOpenIcon, UserIcon, UserGroupIcon, CheckCircleIcon, ClockIcon, PlusIcon, ClipboardListIcon } from '../../components/Icons';
 
@@ -63,9 +64,12 @@ export default function TeacherDashboard() {
         ...prev,
         totalTests: Math.max(0, prev.totalTests - 1)
       }));
+      toast.success(`Test "${title}" deleted successfully`);
     } catch (err) {
       console.error('Failed to delete test:', err);
-      alert(err.response?.data?.error || 'Failed to delete test');
+      const errMsg = err.response?.data?.error || 'Failed to delete test';
+      toast.error(errMsg);
+      alert(errMsg);
     }
   };
 
