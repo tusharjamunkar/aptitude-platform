@@ -160,14 +160,6 @@ export default function Login() {
             </p>
           </div>
 
-          {/* Quick Demo Credentials Info for Testing */}
-          <div className="mt-6 p-3.5 rounded-lg bg-slate-50 border border-slate-200/80 text-[11px] text-slate-600">
-            <span className="font-semibold text-slate-800 block mb-1">Faculty Account Credentials:</span>
-            <div className="font-mono text-slate-700 space-y-0.5">
-              <div>Email: <span className="text-blue-700 font-semibold">teacher@aptitude.com</span></div>
-              <div>Password: <span className="text-blue-700 font-semibold">Teacher@12345</span></div>
-            </div>
-          </div>
         </div>
       </div>
     </div>
