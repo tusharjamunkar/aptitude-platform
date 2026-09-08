@@ -41,6 +41,7 @@ model Test {
   deadline        DateTime?
   isActive        Boolean  @default(false)
   isMandatory     Boolean  @default(false)
+  isDeleted       Boolean  @default(false)
   warningsAllowed Int      @default(1)
   createdBy       String
   teacher         User     @relation("TeacherTests", fields: [createdBy], references: [id])

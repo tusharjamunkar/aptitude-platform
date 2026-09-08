@@ -4,6 +4,9 @@ const { authenticate, requireTeacher, requireStudent } = require('../middleware/
 
 const prisma = new PrismaClient();
 
+// Ensure isDeleted column exists in PostgreSQL
+prisma.$executeRawUnsafe('ALTER TABLE "Test" ADD COLUMN IF NOT EXISTS "isDeleted" BOOLEAN NOT NULL DEFAULT false;').catch(() => {});
+
 // In-memory test cache with TTL to protect database pool from concurrency spikes
 let cachedActiveTests = null;
 let cachedActiveTestsTime = 0;
@@ -18,10 +21,14 @@ function invalidateTestCache() {
 router.get('/', authenticate, requireTeacher, async (req, res) => {
   try {
     const tests = await prisma.test.findMany({
-      where: { createdBy: req.user.id },
+      where: {
+        createdBy: req.user.id,
+        isDeleted: false
+      },
       include: {
         _count: { select: { questions: true, attempts: true } }
-      }
+      },
+      orderBy: { createdAt: 'desc' }
     });
     res.json(tests);
   } catch (err) {
@@ -111,37 +118,41 @@ router.get('/:id', authenticate, requireTeacher, async (req, res) => {
 router.delete('/:id', authenticate, requireTeacher, async (req, res) => {
   try {
     const { id } = req.params;
-    const test = await prisma.test.findUnique({ where: { id } });
+    const test = await prisma.test.findUnique({
+      where: { id },
+      include: {
+        _count: { select: { attempts: true } }
+      }
+    });
     if (!test) return res.status(404).json({ error: 'Test not found' });
     if (test.createdBy !== req.user.id && req.user.role !== 'TEACHER') {
       return res.status(403).json({ error: 'Forbidden' });
     }
 
-    // 1. Fetch all attempt IDs for this test
-    const attempts = await prisma.testAttempt.findMany({
-      where: { testId: id },
-      select: { id: true }
-    });
-    const attemptIds = attempts.map(a => a.id);
+    const attemptCount = test._count?.attempts || 0;
 
-    // 2. Cascade delete answers, attempts, disconnect questions, and delete test atomically
-    await prisma.$transaction(async (tx) => {
-      if (attemptIds.length > 0) {
-        await tx.studentAnswer.deleteMany({
-          where: { attemptId: { in: attemptIds } }
-        });
-      }
-      await tx.testAttempt.deleteMany({
-        where: { testId: id }
+    if (attemptCount > 0) {
+      // Students have completed/attempted this test!
+      // In order to preserve students' test history, marks, and topic analytics,
+      // mark the test as deleted and inactive so it disappears from the teacher's dashboard
+      // and cannot be started by new candidates, while students can permanently inspect their performance.
+      await prisma.test.update({
+        where: { id },
+        data: {
+          isDeleted: true,
+          isActive: false
+        }
       });
-      await tx.test.update({
+    } else {
+      // No student has attempted this test yet; purge completely
+      await prisma.test.update({
         where: { id },
         data: { questions: { set: [] } }
       }).catch(() => {});
-      await tx.test.delete({
+      await prisma.test.delete({
         where: { id }
       });
-    });
+    }
 
     invalidateTestCache();
     res.json({ message: 'Deleted successfully' });
@@ -230,6 +241,7 @@ router.get('/available', authenticate, requireStudent, async (req, res) => {
       cachedActiveTests = await prisma.test.findMany({
         where: {
           isActive: true,
+          isDeleted: false,
           AND: [
             { OR: [{ scheduledAt: null }, { scheduledAt: { lte: now } }] },
             { OR: [{ deadline: null }, { deadline: { gte: now } }] },

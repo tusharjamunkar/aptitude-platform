@@ -32,7 +32,7 @@ async function handleAttemptCreation(req, res) {
     }
     
     // Legitimate 404 for non-existent assessment URLs
-    if (!test) {
+    if (!test || test.isDeleted) {
       return res.status(404).json({ error: 'Assessment not found. This test link does not exist or has been removed.' });
     }
 

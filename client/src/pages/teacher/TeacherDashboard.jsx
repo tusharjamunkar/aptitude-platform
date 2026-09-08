@@ -54,7 +54,7 @@ export default function TeacherDashboard() {
   };
 
   const handleDeleteTest = async (testId, title) => {
-    if (!window.confirm(`Are you sure you want to delete the test "${title}"? This will also remove any attempts associated with this test.`)) {
+    if (!window.confirm(`Are you sure you want to remove the test "${title}"? It will be removed from your dashboard, while students who took this test will still be able to see their score and examination history.`)) {
       return;
     }
     try {
