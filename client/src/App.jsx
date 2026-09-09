@@ -77,6 +77,9 @@ function AppRoutes() {
         <Route path="profile" element={<TeacherDashboard />} />
         <Route path="questions" element={<QuestionBank />} />
         <Route path="create-test" element={<CreateTest />} />
+        <Route path="create-test/:id" element={<CreateTest />} />
+        <Route path="edit-test/:id" element={<CreateTest />} />
+        <Route path="tests/:id/edit" element={<CreateTest />} />
         <Route path="tests" element={<TeacherDashboard />} />
         <Route path="tests/:id" element={<TestResults />} />
         <Route path="tests/:id/results" element={<TestResults />} />

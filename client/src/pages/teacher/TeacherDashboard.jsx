@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import { toast } from 'react-hot-toast';
@@ -9,9 +9,29 @@ import { BookOpenIcon, UserIcon, UserGroupIcon, CheckCircleIcon, ClockIcon, Plus
 export default function TeacherDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ totalTests: 0, totalStudents: 0, avgScore: 0, activeTests: 0 });
   const [tests, setTests] = useState([]);
+
+  // Immediately ingest new/updated test if passed via navigation state
+  useEffect(() => {
+    if (location.state?.newTest) {
+      const incomingTest = location.state.newTest;
+      setTests((prev) => {
+        const exists = prev.some((t) => t.id === incomingTest.id);
+        if (exists) {
+          return prev.map((t) => (t.id === incomingTest.id ? { ...t, ...incomingTest } : t));
+        }
+        return [incomingTest, ...prev];
+      });
+      setStats((prev) => ({
+        ...prev,
+        totalTests: prev.totalTests + 1,
+        activeTests: incomingTest.isActive !== false ? prev.activeTests + 1 : prev.activeTests
+      }));
+    }
+  }, [location.state]);
 
   useEffect(() => {
     fetchDashboard();
@@ -21,8 +41,14 @@ export default function TeacherDashboard() {
     try {
       setLoading(true);
       const [testsRes, analyticsRes] = await Promise.all([
-        api.get('/tests').catch(() => ({ data: [] })),
-        api.get('/analytics/teacher').catch(() => ({ data: {} }))
+        api.get('/tests', {
+          params: { _t: Date.now() },
+          headers: { 'Cache-Control': 'no-cache' }
+        }).catch(() => ({ data: [] })),
+        api.get('/analytics/teacher', {
+          params: { _t: Date.now() },
+          headers: { 'Cache-Control': 'no-cache' }
+        }).catch(() => ({ data: {} }))
       ]);
 
       const testList = testsRes.data || [];

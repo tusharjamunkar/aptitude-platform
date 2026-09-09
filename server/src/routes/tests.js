@@ -20,6 +20,10 @@ function invalidateTestCache() {
 // Teacher routes
 router.get('/', authenticate, requireTeacher, async (req, res) => {
   try {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+
     const tests = await prisma.test.findMany({
       where: {
         createdBy: req.user.id,
@@ -38,46 +42,131 @@ router.get('/', authenticate, requireTeacher, async (req, res) => {
 
 router.post('/', authenticate, requireTeacher, async (req, res) => {
   try {
-    const { title, subject, topic, description, duration, scheduledAt, deadline, isMandatory, warningsAllowed, questionIds, milestoneId } = req.body;
+    const { 
+      title, 
+      subject, 
+      topic, 
+      description, 
+      duration, 
+      scheduledAt, 
+      deadline, 
+      isMandatory, 
+      warningsAllowed, 
+      questionIds, 
+      milestoneId,
+      isActive 
+    } = req.body;
+
+    if (!title || !title.trim()) {
+      return res.status(400).json({ error: 'Assessment title is required' });
+    }
     
+    // Newly created tests are ACTIVE immediately by default unless explicitly set to false
+    const initialActiveState = isActive !== undefined ? Boolean(isActive) : true;
+
     const test = await prisma.test.create({
       data: {
-        title, subject, topic, description, duration, 
+        title: title.trim(), 
+        subject: subject ? subject.trim() : 'Quantitative & Logical Aptitude', 
+        topic: topic ? topic.trim() : 'Comprehensive Assessment', 
+        description: description ? description.trim() : null, 
+        duration: parseInt(duration) || 45, 
         scheduledAt: scheduledAt ? new Date(scheduledAt) : null, 
         deadline: deadline ? new Date(deadline) : null,
-        isMandatory, warningsAllowed, createdBy: req.user.id, milestoneId,
+        isActive: initialActiveState,
+        isMandatory: isMandatory ?? true, 
+        warningsAllowed: warningsAllowed !== undefined ? parseInt(warningsAllowed) : 1, 
+        createdBy: req.user.id, 
+        milestoneId,
         questions: { connect: (questionIds || []).map(id => ({ id })) }
+      },
+      include: {
+        _count: { select: { questions: true, attempts: true } },
+        questions: {
+          select: {
+            id: true,
+            questionText: true,
+            marks: true,
+            topic: true,
+            difficulty: true,
+            sourceExam: true
+          }
+        }
       }
     });
+
     invalidateTestCache();
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
     res.status(201).json(test);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to create test' });
+    console.error('Failed to create test:', err);
+    res.status(500).json({ error: 'Failed to create test: ' + (err.message || 'Database error') });
   }
 });
 
 router.put('/:id', authenticate, requireTeacher, async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, subject, topic, description, duration, scheduledAt, deadline, isMandatory, warningsAllowed, questionIds, milestoneId } = req.body;
+    const { 
+      title, 
+      subject, 
+      topic, 
+      description, 
+      duration, 
+      scheduledAt, 
+      deadline, 
+      isMandatory, 
+      warningsAllowed, 
+      questionIds, 
+      milestoneId,
+      isActive 
+    } = req.body;
     
     const test = await prisma.test.findUnique({ where: { id } });
-    if (!test || test.createdBy !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
+    if (!test) {
+      return res.status(404).json({ error: `Assessment not found with ID ${id}` });
+    }
+    if (test.createdBy !== req.user.id && req.user.role !== 'TEACHER') {
+      return res.status(403).json({ error: 'Forbidden: You do not have permission to update this assessment' });
+    }
 
     const updated = await prisma.test.update({
       where: { id },
       data: {
-        title, subject, topic, description, duration, 
+        title: title !== undefined ? title.trim() : test.title, 
+        subject: subject !== undefined ? subject.trim() : test.subject, 
+        topic: topic !== undefined ? topic.trim() : test.topic, 
+        description: description !== undefined ? description.trim() : test.description, 
+        duration: duration !== undefined ? parseInt(duration) : test.duration, 
         scheduledAt: scheduledAt ? new Date(scheduledAt) : null, 
         deadline: deadline ? new Date(deadline) : null,
-        isMandatory, warningsAllowed, milestoneId,
-        questions: { set: (questionIds || []).map(qId => ({ id: qId })) }
+        isActive: isActive !== undefined ? Boolean(isActive) : test.isActive,
+        isMandatory: isMandatory !== undefined ? Boolean(isMandatory) : test.isMandatory, 
+        warningsAllowed: warningsAllowed !== undefined ? parseInt(warningsAllowed) : test.warningsAllowed, 
+        milestoneId: milestoneId !== undefined ? milestoneId : test.milestoneId,
+        questions: questionIds ? { set: questionIds.map(qId => ({ id: qId })) } : undefined
+      },
+      include: {
+        _count: { select: { questions: true, attempts: true } },
+        questions: {
+          select: {
+            id: true,
+            questionText: true,
+            marks: true,
+            topic: true,
+            difficulty: true,
+            sourceExam: true
+          }
+        }
       }
     });
+
     invalidateTestCache();
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
     res.json(updated);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to update test' });
+    console.error('Failed to update test:', err);
+    res.status(500).json({ error: 'Failed to update test: ' + (err.message || 'Server error') });
   }
 });
 
@@ -104,14 +193,21 @@ router.get('/:id', authenticate, requireTeacher, async (req, res) => {
       }
     });
 
-    if (!test || test.createdBy !== req.user.id) {
-      return res.status(404).json({ error: 'Test not found or access denied' });
+    if (!test) {
+      return res.status(404).json({ error: `Assessment not found with ID: ${id}` });
     }
 
+    if (test.createdBy !== req.user.id && req.user.role !== 'TEACHER') {
+      return res.status(403).json({ error: 'Forbidden: You do not have permission to view or edit this assessment' });
+    }
+
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
     res.json(test);
   } catch (err) {
     console.error('Failed to fetch test details:', err);
-    res.status(500).json({ error: 'Failed to fetch test details' });
+    res.status(500).json({ error: 'Failed to fetch test details: ' + (err.message || 'Internal server error') });
   }
 });
 

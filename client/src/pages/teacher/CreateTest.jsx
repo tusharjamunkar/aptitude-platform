@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
 import { 
@@ -15,7 +15,8 @@ import BulkQuestionModal from '../../components/BulkQuestionModal';
 export default function CreateTest() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const editTestId = searchParams.get('edit') || searchParams.get('id');
+  const routeParams = useParams();
+  const editTestId = routeParams?.id || searchParams.get('edit') || searchParams.get('id');
   const isEditMode = Boolean(editTestId);
 
   const [step, setStep] = useState(1);
@@ -23,6 +24,8 @@ export default function CreateTest() {
   const [selectedQuestions, setSelectedQuestions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [testLoading, setTestLoading] = useState(false);
+  const [testLoadError, setTestLoadError] = useState(null);
 
   // Form parameters
   const [formData, setFormData] = useState({
@@ -35,7 +38,8 @@ export default function CreateTest() {
     targetQuestionCount: 45,
     duration: 45,
     isMandatory: true,
-    warningsAllowed: 1
+    warningsAllowed: 1,
+    isActive: true
   });
 
   // Step 2 Filters & Controls
@@ -55,8 +59,14 @@ export default function CreateTest() {
   }, [editTestId]);
 
   const fetchTestForEdit = async (testId) => {
+    if (!testId) return;
     try {
-      const res = await api.get(`/tests/${testId}`);
+      setTestLoading(true);
+      setTestLoadError(null);
+      const res = await api.get(`/tests/${testId}`, {
+        params: { _t: Date.now() },
+        headers: { 'Cache-Control': 'no-cache' }
+      });
       const test = res.data;
       if (test) {
         setFormData({
@@ -64,12 +74,13 @@ export default function CreateTest() {
           subject: test.subject || 'Quantitative & Logical Aptitude',
           studyYear: test.studyYear || 'All Years',
           department: test.department || 'All Departments',
-          topic: test.topic || '',
+          topic: test.topic || 'Comprehensive Assessment',
           description: test.description || '',
           targetQuestionCount: test.questions?.length || 45,
           duration: test.duration || 45,
           isMandatory: test.isMandatory ?? true,
-          warningsAllowed: test.warningsAllowed ?? 1
+          warningsAllowed: test.warningsAllowed ?? 1,
+          isActive: test.isActive ?? true
         });
         if (test.questions && Array.isArray(test.questions)) {
           setSelectedQuestions(test.questions.map((q) => q.id));
@@ -78,7 +89,11 @@ export default function CreateTest() {
       }
     } catch (err) {
       console.error('Failed to load test for editing:', err);
-      toast.error('Failed to load test for editing');
+      const errMsg = err.response?.data?.error || err.response?.data?.message || err.message || 'Failed to load test for editing';
+      setTestLoadError(errMsg);
+      toast.error(errMsg);
+    } finally {
+      setTestLoading(false);
     }
   };
 
@@ -215,18 +230,31 @@ export default function CreateTest() {
       const payload = {
         ...formData,
         duration: parseInt(formData.duration) || 45,
-        questionIds: selectedQuestions
+        questionIds: selectedQuestions,
+        isActive: formData.isActive !== undefined ? Boolean(formData.isActive) : true
       };
+
+      let resultData;
       if (isEditMode && editTestId) {
-        await api.put(`/tests/${editTestId}`, payload);
+        const res = await api.put(`/tests/${editTestId}`, payload);
+        resultData = res.data;
         toast.success('Assessment updated successfully!');
       } else {
-        await api.post('/tests', payload);
+        const res = await api.post('/tests', payload);
+        resultData = res.data;
         toast.success('Assessment created and published successfully!');
       }
-      navigate('/teacher');
+
+      // Navigate to teacher dashboard and pass newly created/updated test for instantaneous UI visibility
+      navigate('/teacher', { 
+        state: { 
+          newTest: resultData, 
+          message: isEditMode ? 'Assessment updated successfully!' : 'Assessment created and published!' 
+        } 
+      });
     } catch (err) {
-      toast.error(err.response?.data?.error || (isEditMode ? 'Failed to update assessment' : 'Failed to create assessment'));
+      const errMsg = err.response?.data?.error || err.response?.data?.message || (isEditMode ? 'Failed to update assessment' : 'Failed to create assessment');
+      toast.error(errMsg);
     } finally {
       setSubmitting(false);
     }
@@ -261,11 +289,49 @@ export default function CreateTest() {
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Create Assessment</h1>
+        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+          {isEditMode ? 'Edit Assessment' : 'Create Assessment'}
+        </h1>
         <p className="text-xs text-slate-500 mt-0.5">
-          Configure test parameters, select examination questions, and publish to students
+          {isEditMode 
+            ? 'Update assessment configuration, adjust selected questions, and save changes' 
+            : 'Configure test parameters, select examination questions, and publish to students'}
         </p>
       </div>
+
+      {/* Loading State for Edit Mode */}
+      {testLoading && (
+        <div className="card p-10 text-center space-y-3">
+          <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="text-xs font-semibold text-slate-700">Loading assessment parameters and selected questions...</p>
+        </div>
+      )}
+
+      {/* Error Banner for Edit Mode */}
+      {testLoadError && (
+        <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-start gap-2 text-rose-800">
+            <span className="font-bold shrink-0">⚠️ Error loading assessment:</span>
+            <span>{testLoadError}</span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => fetchTestForEdit(editTestId)}
+              className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold transition-colors shadow-xs"
+            >
+              Retry
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/teacher')}
+              className="px-3 py-1.5 bg-white hover:bg-rose-50 border border-rose-300 text-rose-700 rounded-lg text-xs font-semibold transition-colors"
+            >
+              Return to Dashboard
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Stepper Progress */}
       <div className="grid grid-cols-3 gap-2 p-1 bg-slate-200/70 rounded-xl">
@@ -300,7 +366,7 @@ export default function CreateTest() {
               : 'text-slate-600 hover:text-slate-900'
           }`}
         >
-          3. Final Review & Publish
+          {isEditMode ? '3. Final Review & Save' : '3. Final Review & Publish'}
         </button>
       </div>
 
