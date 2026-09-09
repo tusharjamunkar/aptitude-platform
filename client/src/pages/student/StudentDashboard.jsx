@@ -25,9 +25,11 @@ export default function StudentDashboard() {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      // Fetch available tests
+      // Fetch available tests and filter out legacy/archived assessments
       const testsRes = await api.get('/tests/available').catch(() => ({ data: [] }));
-      const testList = testsRes.data || [];
+      const testList = (testsRes.data || []).filter(
+        (t) => t.id !== 'cmtoxcmo500326psc7zus19at' && !t.title?.toLowerCase().trim().startsWith('test 1')
+      );
       setAvailableTests(testList);
 
       // Fetch student analytics

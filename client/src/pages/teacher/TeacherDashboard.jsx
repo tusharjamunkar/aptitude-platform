@@ -45,7 +45,7 @@ export default function TeacherDashboard() {
   const fetchDashboard = async () => {
     try {
       setLoading(true);
-      const [testsRes, analyticsRes] = await Promise.all([
+      const [testsRes, analyticsRes, availableRes] = await Promise.all([
         api.get('/tests', {
           params: { _t: Date.now() },
           headers: { 'Cache-Control': 'no-cache' }
@@ -53,14 +53,36 @@ export default function TeacherDashboard() {
         api.get('/analytics/teacher', {
           params: { _t: Date.now() },
           headers: { 'Cache-Control': 'no-cache' }
-        }).catch(() => ({ data: {} }))
+        }).catch(() => ({ data: {} })),
+        api.get('/tests/available', {
+          params: { _t: Date.now() },
+          headers: { 'Cache-Control': 'no-cache' }
+        }).catch(() => ({ data: [] }))
       ]);
 
       const testList = testsRes.data || [];
       const anData = analyticsRes.data || {};
+      const availList = availableRes.data || [];
+
+      // Combine tests from /tests and any active student-visible assessments
+      const combinedMap = new Map();
+      testList.forEach((t) => combinedMap.set(t.id, t));
+      availList.forEach((t) => {
+        if (!combinedMap.has(t.id)) {
+          combinedMap.set(t.id, {
+            ...t,
+            _count: {
+              questions: t._count?.questions || (t.questions ? t.questions.length : 0),
+              attempts: t.attempts ? t.attempts.length : 0
+            }
+          });
+        }
+      });
+
+      const mergedTests = Array.from(combinedMap.values());
 
       // Only hide tests if explicitly marked [DELETED] via the delete button or isDeleted flag
-      let activeTestList = testList.filter((t) => !t.isDeleted && !t.title?.startsWith('[DELETED]') && t.description !== '[DELETED]');
+      let activeTestList = mergedTests.filter((t) => !t.isDeleted && !t.title?.startsWith('[DELETED]') && t.description !== '[DELETED]');
 
       // If a new test was just created and passed via navigation state, ensure it stays at the top
       if (location.state?.newTest) {
