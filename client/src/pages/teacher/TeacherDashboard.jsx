@@ -52,7 +52,18 @@ export default function TeacherDashboard() {
       ]);
 
       // Filter out archived/deleted tests from the active faculty view
-      const activeTestList = testList.filter((t) => !t.isDeleted && !t.title?.startsWith('[DELETED]') && t.description !== '[DELETED]');
+      let activeTestList = testList.filter((t) => !t.isDeleted && !t.title?.startsWith('[DELETED]') && t.description !== '[DELETED]');
+
+      // If a new test was just created and passed via navigation state, ensure it stays at the top
+      if (location.state?.newTest) {
+        const incoming = location.state.newTest;
+        const exists = activeTestList.some((t) => t.id === incoming.id);
+        if (exists) {
+          activeTestList = activeTestList.map((t) => (t.id === incoming.id ? { ...t, ...incoming } : t));
+        } else {
+          activeTestList = [incoming, ...activeTestList];
+        }
+      }
 
       setTests(activeTestList);
       setStats({
