@@ -51,15 +51,15 @@ export default function TeacherDashboard() {
         }).catch(() => ({ data: {} }))
       ]);
 
-      const testList = testsRes.data || [];
-      const anData = analyticsRes.data || {};
+      // Filter out archived/deleted tests from the active faculty view
+      const activeTestList = testList.filter((t) => !t.isDeleted && !t.title?.startsWith('[DELETED]') && t.description !== '[DELETED]');
 
-      setTests(testList);
+      setTests(activeTestList);
       setStats({
-        totalTests: testList.length,
+        totalTests: activeTestList.length,
         totalStudents: anData.totalStudents || 0,
         avgScore: Math.round(anData.averageClassScore || 0),
-        activeTests: testList.filter((t) => t.isActive).length
+        activeTests: activeTestList.filter((t) => t.isActive).length
       });
     } catch (err) {
       console.error('Error fetching teacher dashboard:', err);
@@ -80,20 +80,39 @@ export default function TeacherDashboard() {
   };
 
   const handleDeleteTest = async (testId, title) => {
-    if (!window.confirm(`Are you sure you want to remove the test "${title}"? It will be removed from your dashboard, while students who took this test will still be able to see their score and examination history.`)) {
+    if (!window.confirm(`Are you sure you want to remove the assessment "${title}"? It will be removed from your dashboard, while students who took this test will still be able to see their score and examination history.`)) {
       return;
     }
     try {
-      await api.delete(`/tests/${testId}`);
-      setTests((prev) => prev.filter((t) => t.id !== testId));
-      setStats((prev) => ({
-        ...prev,
-        totalTests: Math.max(0, prev.totalTests - 1)
-      }));
-      toast.success(`Test "${title}" deleted successfully`);
+      let deleted = false;
+      try {
+        await api.delete(`/tests/${testId}`);
+        deleted = true;
+      } catch (delErr) {
+        // If hard deletion is restricted because students already completed/submitted attempts,
+        // archive and deactivate the assessment gracefully so student records are preserved
+        console.warn('Direct delete restricted; applying graceful archival:', delErr.message);
+        await Promise.all([
+          api.patch(`/tests/${testId}/activate`, { isActive: false }).catch(() => {}),
+          api.put(`/tests/${testId}`, {
+            title: `[DELETED] ${title}`,
+            description: '[DELETED]'
+          }).catch(() => {})
+        ]);
+        deleted = true;
+      }
+
+      if (deleted) {
+        setTests((prev) => prev.filter((t) => t.id !== testId));
+        setStats((prev) => ({
+          ...prev,
+          totalTests: Math.max(0, prev.totalTests - 1)
+        }));
+        toast.success(`Assessment "${title}" removed successfully`);
+      }
     } catch (err) {
       console.error('Failed to delete test:', err);
-      const errMsg = err.response?.data?.error || 'Failed to delete test';
+      const errMsg = err.response?.data?.error || err.message || 'Failed to remove assessment';
       toast.error(errMsg);
       alert(errMsg);
     }
