@@ -51,7 +51,10 @@ export default function TeacherDashboard() {
         }).catch(() => ({ data: {} }))
       ]);
 
-      // Filter out archived/deleted tests from the active faculty view
+      const testList = testsRes.data || [];
+      const anData = analyticsRes.data || {};
+
+      // Only hide tests if explicitly marked [DELETED] via the delete button
       let activeTestList = testList.filter((t) => !t.isDeleted && !t.title?.startsWith('[DELETED]') && t.description !== '[DELETED]');
 
       // If a new test was just created and passed via navigation state, ensure it stays at the top
