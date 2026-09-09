@@ -18,18 +18,23 @@ export default function TeacherDashboard() {
   useEffect(() => {
     if (location.state?.newTest) {
       const incomingTest = location.state.newTest;
-      setTests((prev) => {
-        const exists = prev.some((t) => t.id === incomingTest.id);
-        if (exists) {
-          return prev.map((t) => (t.id === incomingTest.id ? { ...t, ...incomingTest } : t));
-        }
-        return [incomingTest, ...prev];
-      });
-      setStats((prev) => ({
-        ...prev,
-        totalTests: prev.totalTests + 1,
-        activeTests: incomingTest.isActive !== false ? prev.activeTests + 1 : prev.activeTests
-      }));
+      const isDeleted = incomingTest.isDeleted || incomingTest.title?.startsWith('[DELETED]') || incomingTest.description === '[DELETED]';
+      if (!isDeleted) {
+        setTests((prev) => {
+          const exists = prev.some((t) => t.id === incomingTest.id);
+          if (exists) {
+            return prev.map((t) => (t.id === incomingTest.id ? { ...t, ...incomingTest } : t));
+          }
+          return [incomingTest, ...prev];
+        });
+        setStats((prev) => ({
+          ...prev,
+          totalTests: prev.totalTests + 1,
+          activeTests: incomingTest.isActive !== false ? prev.activeTests + 1 : prev.activeTests
+        }));
+      }
+      // Clear location state so refreshes don't resurrect or duplicate
+      window.history.replaceState({}, document.title);
     }
   }, [location.state]);
 
@@ -54,17 +59,20 @@ export default function TeacherDashboard() {
       const testList = testsRes.data || [];
       const anData = analyticsRes.data || {};
 
-      // Only hide tests if explicitly marked [DELETED] via the delete button
+      // Only hide tests if explicitly marked [DELETED] via the delete button or isDeleted flag
       let activeTestList = testList.filter((t) => !t.isDeleted && !t.title?.startsWith('[DELETED]') && t.description !== '[DELETED]');
 
       // If a new test was just created and passed via navigation state, ensure it stays at the top
       if (location.state?.newTest) {
         const incoming = location.state.newTest;
-        const exists = activeTestList.some((t) => t.id === incoming.id);
-        if (exists) {
-          activeTestList = activeTestList.map((t) => (t.id === incoming.id ? { ...t, ...incoming } : t));
-        } else {
-          activeTestList = [incoming, ...activeTestList];
+        const isDeleted = incoming.isDeleted || incoming.title?.startsWith('[DELETED]') || incoming.description === '[DELETED]';
+        if (!isDeleted) {
+          const exists = activeTestList.some((t) => t.id === incoming.id);
+          if (exists) {
+            activeTestList = activeTestList.map((t) => (t.id === incoming.id ? { ...t, ...incoming } : t));
+          } else {
+            activeTestList = [incoming, ...activeTestList];
+          }
         }
       }
 
@@ -98,6 +106,9 @@ export default function TeacherDashboard() {
       return;
     }
     try {
+      // Clear browser history state so deleted test cannot resurface on reload
+      window.history.replaceState({}, document.title);
+
       let deleted = false;
       try {
         await api.delete(`/tests/${testId}`);

@@ -97,7 +97,7 @@ router.get('/student', requireStudent, async (req, res) => {
 router.get('/teacher', requireTeacher, async (req, res) => {
   try {
     const tests = await prisma.test.findMany({
-      where: { createdBy: req.user.id, isDeleted: false },
+      where: { isDeleted: false },
       include: { attempts: { include: { answers: { include: { question: true } } } } }
     });
 

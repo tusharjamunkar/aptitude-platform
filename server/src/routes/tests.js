@@ -24,9 +24,9 @@ router.get('/', authenticate, requireTeacher, async (req, res) => {
     res.set('Pragma', 'no-cache');
     res.set('Expires', '0');
 
+    // Return all institutional tests for teachers, excluding deleted ones
     const tests = await prisma.test.findMany({
       where: {
-        createdBy: req.user.id,
         isDeleted: false
       },
       include: {
@@ -313,11 +313,12 @@ router.patch('/:id/activate', authenticate, requireTeacher, async (req, res) => 
     const { isActive } = req.body;
     
     const test = await prisma.test.findUnique({ where: { id } });
-    if (!test || test.createdBy !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
+    if (!test) return res.status(404).json({ error: 'Test not found' });
+    if (test.createdBy !== req.user.id && req.user.role !== 'TEACHER') return res.status(403).json({ error: 'Forbidden' });
 
     const updated = await prisma.test.update({
       where: { id },
-      data: { isActive }
+      data: { isActive: Boolean(isActive) }
     });
     invalidateTestCache();
     res.json(updated);

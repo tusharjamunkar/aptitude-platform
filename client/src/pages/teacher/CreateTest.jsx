@@ -100,6 +100,22 @@ export default function CreateTest() {
           associatedQuestionIds = questionList
             .filter((q) => (q.usedInTests && q.usedInTests.some((ut) => ut.id === testId)) || q.testId === testId)
             .map((q) => q.id);
+
+          // If questions are still empty, try fetching from test results endpoint
+          if (associatedQuestionIds.length === 0) {
+            try {
+              const resRes = await api.get(`/tests/${testId}/results`);
+              if (Array.isArray(resRes.data) && resRes.data.length > 0) {
+                const sampleAnswers = resRes.data[0]?.answers || [];
+                const resQIds = sampleAnswers.map((a) => a.questionId || a.question?.id).filter(Boolean);
+                if (resQIds.length > 0) {
+                  associatedQuestionIds = [...new Set(resQIds)];
+                }
+              }
+            } catch (rErr) {
+              console.warn('Results endpoint question fallback:', rErr);
+            }
+          }
         }
       }
 
