@@ -119,6 +119,23 @@ export default function CreateTest() {
         }
       }
 
+      // 3. Fallback to /tests/:id/results if test wasn't in /tests list either
+      if (!test) {
+        try {
+          const resRes = await api.get(`/tests/${testId}/results`);
+          if (Array.isArray(resRes.data) && resRes.data.length > 0) {
+            test = resRes.data[0]?.test || { id: testId };
+            const sampleAnswers = resRes.data[0]?.answers || [];
+            const resQIds = sampleAnswers.map((a) => a.questionId || a.question?.id).filter(Boolean);
+            if (resQIds.length > 0) {
+              associatedQuestionIds = [...new Set(resQIds)];
+            }
+          }
+        } catch (rErr) {
+          console.warn('Results endpoint test fallback:', rErr);
+        }
+      }
+
       if (test) {
         setFormData({
           title: test.title || '',
