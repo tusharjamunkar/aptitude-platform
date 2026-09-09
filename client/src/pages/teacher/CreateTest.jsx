@@ -63,11 +63,46 @@ export default function CreateTest() {
     try {
       setTestLoading(true);
       setTestLoadError(null);
-      const res = await api.get(`/tests/${testId}`, {
-        params: { _t: Date.now() },
-        headers: { 'Cache-Control': 'no-cache' }
-      });
-      const test = res.data;
+
+      let test = null;
+      let associatedQuestionIds = [];
+
+      // 1. Attempt dedicated single test endpoint
+      try {
+        const res = await api.get(`/tests/${testId}`, {
+          params: { _t: Date.now() },
+          headers: { 'Cache-Control': 'no-cache' }
+        });
+        if (res.data && res.data.id) {
+          test = res.data;
+          if (Array.isArray(test.questions)) {
+            associatedQuestionIds = test.questions.map((q) => q.id);
+          }
+        }
+      } catch (singleErr) {
+        // Fallback gracefully to dashboard test list + question bank associations
+        console.warn('Dedicated test endpoint fallback:', singleErr.message);
+      }
+
+      // 2. Fallback to /tests list if single endpoint was unavailable or returned 404
+      if (!test) {
+        const [testsRes, qRes] = await Promise.all([
+          api.get('/tests', { params: { _t: Date.now() }, headers: { 'Cache-Control': 'no-cache' } }).catch(() => ({ data: [] })),
+          api.get('/questions').catch(() => ({ data: [] }))
+        ]);
+        const testList = testsRes.data || [];
+        const questionList = qRes.data || [];
+        const found = testList.find((t) => t.id === testId);
+
+        if (found) {
+          test = found;
+          // Match questions belonging to this test from the questions dataset
+          associatedQuestionIds = questionList
+            .filter((q) => (q.usedInTests && q.usedInTests.some((ut) => ut.id === testId)) || q.testId === testId)
+            .map((q) => q.id);
+        }
+      }
+
       if (test) {
         setFormData({
           title: test.title || '',
@@ -76,20 +111,22 @@ export default function CreateTest() {
           department: test.department || 'All Departments',
           topic: test.topic || 'Comprehensive Assessment',
           description: test.description || '',
-          targetQuestionCount: test.questions?.length || 45,
+          targetQuestionCount: associatedQuestionIds.length || test._count?.questions || 45,
           duration: test.duration || 45,
           isMandatory: test.isMandatory ?? true,
           warningsAllowed: test.warningsAllowed ?? 1,
           isActive: test.isActive ?? true
         });
-        if (test.questions && Array.isArray(test.questions)) {
-          setSelectedQuestions(test.questions.map((q) => q.id));
+        if (associatedQuestionIds.length > 0) {
+          setSelectedQuestions(associatedQuestionIds);
         }
         toast.success(`Loaded "${test.title}" for editing`);
+      } else {
+        throw new Error(`Assessment with ID "${testId}" could not be found.`);
       }
     } catch (err) {
       console.error('Failed to load test for editing:', err);
-      const errMsg = err.response?.data?.error || err.response?.data?.message || err.message || 'Failed to load test for editing';
+      const errMsg = err.response?.data?.error || err.response?.data?.message || err.message || 'Failed to load assessment for editing';
       setTestLoadError(errMsg);
       toast.error(errMsg);
     } finally {
@@ -242,6 +279,18 @@ export default function CreateTest() {
       } else {
         const res = await api.post('/tests', payload);
         resultData = res.data;
+        // If created test is not active yet, immediately activate it
+        if (resultData && !resultData.isActive && payload.isActive !== false) {
+          try {
+            const actRes = await api.patch(`/tests/${resultData.id}/activate`, { isActive: true });
+            if (actRes.data) {
+              resultData = { ...resultData, isActive: true };
+            }
+          } catch (actErr) {
+            console.warn('Auto-activation warning:', actErr);
+            resultData.isActive = true;
+          }
+        }
         toast.success('Assessment created and published successfully!');
       }
 
