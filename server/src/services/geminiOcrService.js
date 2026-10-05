@@ -1,10 +1,14 @@
-const { GoogleGenAI } = require('@google/genai');
+/**
+ * geminiOcrService.js
+ * Native fetch-based Google Gemini Vision AI service.
+ * Zero external SDK dependencies, compatible with Node 18+ and all cloud PaaS environments (Render, etc.).
+ */
 
 /**
- * Extracts questions from textbook page image using Gemini Multimodal Vision.
+ * Extracts questions from textbook page image using Gemini Multimodal Vision API.
  * 
  * @param {string} imageInput - Base64 string or data URL (e.g. data:image/jpeg;base64,...)
- * @param {object} options - { apiKey, mimeType, topic, customPrompt }
+ * @param {object} options - { apiKey, mimeType, topic, model }
  * @returns {Promise<object>} Extracted questions, quality metadata, confidence
  */
 async function extractQuestionsWithGemini(imageInput, options = {}) {
@@ -72,16 +76,12 @@ Respond strictly with a valid JSON object matching this schema:
 }`;
 
   try {
-    const ai = new GoogleGenAI({ apiKey });
-    
-    // Attempt with gemini-2.5-flash first, fallback to gemini-1.5-flash if needed
-    const modelName = options.model || 'gemini-2.5-flash';
-    
-    const response = await ai.models.generateContent({
-      model: modelName,
+    const modelName = options.model || 'gemini-1.5-flash';
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+
+    const requestBody = {
       contents: [
         {
-          role: 'user',
           parts: [
             { text: prompt },
             {
@@ -92,16 +92,34 @@ Respond strictly with a valid JSON object matching this schema:
             }
           ]
         }
-      ]
+      ],
+      generationConfig: {
+        temperature: 0.2
+      }
+    };
+
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(requestBody)
     });
 
-    const responseText = response?.text || '';
-    if (!responseText) {
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Gemini API error (${response.status}): ${errText}`);
+    }
+
+    const resJson = await response.json();
+    const candidateText = resJson?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+    if (!candidateText) {
       throw new Error('Empty response received from Vision AI model.');
     }
 
     // Clean JSON markdown if wrapped in ```json ... ```
-    let cleanJsonStr = responseText.trim();
+    let cleanJsonStr = candidateText.trim();
     if (cleanJsonStr.startsWith('```')) {
       cleanJsonStr = cleanJsonStr.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
     }

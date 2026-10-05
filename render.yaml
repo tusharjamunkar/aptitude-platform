@@ -16,6 +16,8 @@ services:
         value: production
       - key: CLIENT_URL
         value: https://aptitude-client.onrender.com
+      - key: NODE_VERSION
+        value: 20.18.0
 
   - type: web
     name: aptitude-client
@@ -30,6 +32,8 @@ services:
     envVars:
       - key: VITE_API_URL
         value: https://aptitude-server-jbju.onrender.com
+      - key: NODE_VERSION
+        value: 20.18.0
 
 databases:
   - name: aptitude-db
