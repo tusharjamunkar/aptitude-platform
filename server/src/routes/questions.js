@@ -212,5 +212,48 @@ router.post('/bulk', async (req, res) => {
   }
 });
 
+// GET /api/questions/ai-status - Check if backend has pre-configured Gemini AI key
+router.get('/ai-status', (req, res) => {
+  res.json({
+    hasServerAiKey: Boolean(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim() !== '')
+  });
+});
+
+const { extractQuestionsWithGemini } = require('../services/geminiOcrService');
+
+// POST /api/questions/ocr-extract - Extract questions from textbook page image using Gemini Vision AI
+router.post('/ocr-extract', async (req, res) => {
+  try {
+    const { image, mimeType, apiKey, model, pageNumber } = req.body;
+    if (!image) {
+      return res.status(400).json({ error: 'Image data is required' });
+    }
+
+    const result = await extractQuestionsWithGemini(image, {
+      apiKey,
+      mimeType: mimeType || 'image/jpeg',
+      model
+    });
+
+    if (!result.success) {
+      return res.status(result.hasAiKey ? 422 : 400).json({
+        error: result.error,
+        hasAiKey: result.hasAiKey,
+        pageNumber
+      });
+    }
+
+    res.json({
+      success: true,
+      pageNumber,
+      hasAiKey: true,
+      data: result.data
+    });
+  } catch (err) {
+    console.error('OCR extraction route error:', err);
+    res.status(500).json({ error: 'Internal OCR extraction error: ' + err.message });
+  }
+});
+
 module.exports = router;
 

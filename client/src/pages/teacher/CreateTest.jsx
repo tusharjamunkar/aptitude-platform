@@ -8,9 +8,12 @@ import {
   FolderIcon, 
   RefreshIcon, 
   AlertIcon, 
-  BookOpenIcon 
+  BookOpenIcon,
+  CameraIcon,
+  SparklesIcon
 } from '../../components/Icons';
 import BulkQuestionModal from '../../components/BulkQuestionModal';
+import TextbookQuestionModal from '../../components/TextbookQuestionModal';
 
 export default function CreateTest() {
   const navigate = useNavigate();
@@ -343,6 +346,7 @@ export default function CreateTest() {
   };
 
   const [showBulkModal, setShowBulkModal] = useState(false);
+  const [showTextbookModal, setShowTextbookModal] = useState(false);
 
   const targetCount = parseInt(formData.targetQuestionCount) || 45;
   const remainingCount = targetCount - selectedQuestions.length;
@@ -364,6 +368,26 @@ export default function CreateTest() {
       toast.success(`Selected ${newlyCreated.length} newly added questions for this assessment!`);
     } catch (err) {
       console.error('Error refreshing questions after bulk import:', err);
+    }
+  };
+
+  const handleTextbookQuestionsAdded = async (bulkResponse) => {
+    try {
+      const res = await api.get('/questions');
+      const updatedList = res.data || [];
+      setQuestions(updatedList);
+
+      // Automatically select the newly created textbook questions into this assessment!
+      const currentIds = new Set(selectedQuestions);
+      const newlyCreated = updatedList
+        .filter((q) => !currentIds.has(q.id))
+        .slice(0, bulkResponse?.addedCount || 10);
+      
+      const newSelectedIds = Array.from(new Set([...selectedQuestions, ...newlyCreated.map((q) => q.id)]));
+      setSelectedQuestions(newSelectedIds);
+      toast.success(`Selected ${newlyCreated.length} textbook question(s) for this assessment!`);
+    } catch (err) {
+      console.error('Error refreshing questions after textbook import:', err);
     }
   };
 
@@ -624,6 +648,32 @@ export default function CreateTest() {
             </div>
           </div>
 
+          {/* Textbook AI Extraction Quick Banner */}
+          <div className="p-3.5 bg-gradient-to-r from-blue-50/80 via-indigo-50/50 to-blue-50/80 border border-blue-200/80 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                <CameraIcon className="w-4 h-4" />
+              </div>
+              <div>
+                <h4 className="text-xs font-bold text-slate-800">
+                  Have questions in a printed textbook or exam paper?
+                </h4>
+                <p className="text-[11px] text-slate-500">
+                  Take photos using your camera or upload pages to automatically extract questions, options, and math formulas with AI.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowTextbookModal(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1.5 px-3.5 rounded-lg shadow-xs transition-colors shrink-0 flex items-center gap-1.5 self-start sm:self-auto"
+            >
+              <CameraIcon className="w-3.5 h-3.5" />
+              <span>Add from Textbook</span>
+            </button>
+          </div>
+
           <div className="pt-4 flex justify-end">
             <button
               type="button"
@@ -684,6 +734,16 @@ export default function CreateTest() {
 
             {/* Quick Actions */}
             <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setShowTextbookModal(true)}
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold py-1.5 px-3 rounded-lg shadow-sm transition-all flex items-center gap-1.5 ring-1 ring-blue-400/30"
+                title="Take or upload photos of textbook pages to automatically extract questions with AI/OCR"
+              >
+                <CameraIcon className="w-3.5 h-3.5" />
+                <span>📸 Add Questions from Textbook</span>
+              </button>
+
               <button
                 type="button"
                 onClick={() => setShowBulkModal(true)}
@@ -1159,6 +1219,16 @@ export default function CreateTest() {
         isOpen={showBulkModal}
         onClose={() => setShowBulkModal(false)}
         onQuestionsAdded={handleBulkQuestionsAdded}
+        existingQuestions={questions}
+        initialTopic={formData.topic || formData.subject || 'Quantitative Aptitude'}
+        isAssessmentMode={true}
+      />
+
+      {/* Textbook Capture & AI OCR Modal */}
+      <TextbookQuestionModal
+        isOpen={showTextbookModal}
+        onClose={() => setShowTextbookModal(false)}
+        onQuestionsAdded={handleTextbookQuestionsAdded}
         existingQuestions={questions}
         initialTopic={formData.topic || formData.subject || 'Quantitative Aptitude'}
         isAssessmentMode={true}

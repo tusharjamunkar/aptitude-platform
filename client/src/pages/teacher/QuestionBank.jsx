@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
-import { BookOpenIcon, PlusIcon, DocumentTextIcon, ClipboardListIcon, AlertIcon, CheckCircleIcon } from '../../components/Icons';
+import { BookOpenIcon, PlusIcon, DocumentTextIcon, ClipboardListIcon, AlertIcon, CheckCircleIcon, CameraIcon } from '../../components/Icons';
 import BulkQuestionModal from '../../components/BulkQuestionModal';
+import TextbookQuestionModal from '../../components/TextbookQuestionModal';
 
 export default function QuestionBank() {
   const [questions, setQuestions] = useState([]);
@@ -13,6 +14,7 @@ export default function QuestionBank() {
   const [difficultyFilter, setDifficultyFilter] = useState('All');
   const [usageFilter, setUsageFilter] = useState('All'); // 'All' | 'UNUSED' | 'USED'
   const [showModal, setShowModal] = useState(false);
+  const [showTextbookModal, setShowTextbookModal] = useState(false);
   const [editingQ, setEditingQ] = useState(null);
 
   const topicsList = [
@@ -182,6 +184,14 @@ export default function QuestionBank() {
         </div>
 
         <div className="flex items-center gap-2.5 self-start sm:self-auto flex-wrap">
+          <button
+            onClick={() => setShowTextbookModal(true)}
+            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold py-2 px-3.5 rounded-lg flex items-center gap-1.5 transition-all shadow-sm ring-1 ring-blue-400/30"
+          >
+            <CameraIcon className="w-4 h-4" />
+            <span>Add from Textbook (AI/OCR)</span>
+          </button>
+
           <button
             onClick={handleOpenBulkModal}
             className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 text-xs font-semibold py-2 px-3.5 rounded-lg flex items-center gap-1.5 transition-colors shadow-xs"
@@ -513,6 +523,16 @@ export default function QuestionBank() {
         onQuestionsAdded={fetchQuestions}
         existingQuestions={questions}
         initialTopic={topicFilter !== 'All' ? topicFilter : 'Quantitative Aptitude'}
+      />
+
+      {/* Textbook Capture & AI OCR Modal */}
+      <TextbookQuestionModal
+        isOpen={showTextbookModal}
+        onClose={() => setShowTextbookModal(false)}
+        onQuestionsAdded={fetchQuestions}
+        existingQuestions={questions}
+        initialTopic={topicFilter !== 'All' ? topicFilter : 'Quantitative Aptitude'}
+        isAssessmentMode={false}
       />
     </div>
   );
