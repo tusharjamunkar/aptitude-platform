@@ -66,6 +66,7 @@ model Question {
   difficulty    Difficulty @default(MEDIUM)
   negativeMarks Float    @default(0)
   sourceExam    String?  // e.g. 'TCS NQT 2023', 'Infosys 2022', 'GATE Aptitude'
+  testId        String?  // Kept for zero-downtime database compatibility
   tests         Test[]
   createdBy     String
   teacher       User     @relation(fields: [createdBy], references: [id])
