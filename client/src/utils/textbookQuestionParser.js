@@ -110,53 +110,66 @@ export function extractQuestionAndOptions(rawBlock) {
   const markerStyles = [
     {
       name: 'parentheses_letter',
-      A: /(?:^|[\s\n])\(([aA])\)\s+/g,
-      B: /(?:^|[\s\n])\(([bB])\)\s+/g,
-      C: /(?:^|[\s\n])\(([cC])\)\s+/g,
-      D: /(?:^|[\s\n])\(([dD])\)\s+/g
+      A: /(?:^|[\s\n\?\:\.\;\,])\(([aA])\)[\s\:\-\.]*/g,
+      B: /(?:^|[\s\n\?\:\.\;\,])\(([bB])\)[\s\:\-\.]*/g,
+      C: /(?:^|[\s\n\?\:\.\;\,])\(([cC])\)[\s\:\-\.]*/g,
+      D: /(?:^|[\s\n\?\:\.\;\,])\(([dD])\)[\s\:\-\.]*/g
     },
     {
       name: 'bracket_letter',
-      A: /(?:^|[\s\n])\[([aA])\]\s+/g,
-      B: /(?:^|[\s\n])\[([bB])\]\s+/g,
-      C: /(?:^|[\s\n])\[([cC])\]\s+/g,
-      D: /(?:^|[\s\n])\[([dD])\]\s+/g
-    },
-    {
-      name: 'dot_letter',
-      // Ensure it's not preceded by word character to avoid e.g. "U.S.A."
-      A: /(?:^|[\s\n])(?<![a-zA-Z0-9])([aA])\.\s+/g,
-      B: /(?:^|[\s\n])(?<![a-zA-Z0-9])([bB])\.\s+/g,
-      C: /(?:^|[\s\n])(?<![a-zA-Z0-9])([cC])\.\s+/g,
-      D: /(?:^|[\s\n])(?<![a-zA-Z0-9])([dD])\.\s+/g
+      A: /(?:^|[\s\n\?\:\.\;\,])\[([aA])\][\s\:\-\.]*/g,
+      B: /(?:^|[\s\n\?\:\.\;\,])\[([bB])\][\s\:\-\.]*/g,
+      C: /(?:^|[\s\n\?\:\.\;\,])\[([cC])\][\s\:\-\.]*/g,
+      D: /(?:^|[\s\n\?\:\.\;\,])\[([dD])\][\s\:\-\.]*/g
     },
     {
       name: 'paren_close_letter',
-      A: /(?:^|[\s\n])(?<![a-zA-Z0-9])([aA])\)\s+/g,
-      B: /(?:^|[\s\n])(?<![a-zA-Z0-9])([bB])\)\s+/g,
-      C: /(?:^|[\s\n])(?<![a-zA-Z0-9])([cC])\)\s+/g,
-      D: /(?:^|[\s\n])(?<![a-zA-Z0-9])([dD])\)\s+/g
+      A: /(?:^|[\s\n\?\:\.\;\,])(?<![a-zA-Z0-9])([aA])\)[\s\:\-\.]*/g,
+      B: /(?:^|[\s\n\?\:\.\;\,])(?<![a-zA-Z0-9])([bB])\)[\s\:\-\.]*/g,
+      C: /(?:^|[\s\n\?\:\.\;\,])(?<![a-zA-Z0-9])([cC])\)[\s\:\-\.]*/g,
+      D: /(?:^|[\s\n\?\:\.\;\,])(?<![a-zA-Z0-9])([dD])\)[\s\:\-\.]*/g
+    },
+    {
+      name: 'dot_letter',
+      A: /(?:^|[\s\n\?\:\.\;\,])(?<![a-zA-Z0-9])([aA])[\.\:][\s\-]*/g,
+      B: /(?:^|[\s\n\?\:\.\;\,])(?<![a-zA-Z0-9])([bB])[\.\:][\s\-]*/g,
+      C: /(?:^|[\s\n\?\:\.\;\,])(?<![a-zA-Z0-9])([cC])[\.\:][\s\-]*/g,
+      D: /(?:^|[\s\n\?\:\.\;\,])(?<![a-zA-Z0-9])([dD])[\.\:][\s\-]*/g
     },
     {
       name: 'parentheses_num',
-      A: /(?:^|[\s\n])\((1)\)\s+/g,
-      B: /(?:^|[\s\n])\((2)\)\s+/g,
-      C: /(?:^|[\s\n])\((3)\)\s+/g,
-      D: /(?:^|[\s\n])\((4)\)\s+/g
+      A: /(?:^|[\s\n\?\:\.\;\,])\((1)\)[\s\:\-\.]*/g,
+      B: /(?:^|[\s\n\?\:\.\;\,])\((2)\)[\s\:\-\.]*/g,
+      C: /(?:^|[\s\n\?\:\.\;\,])\((3)\)[\s\:\-\.]*/g,
+      D: /(?:^|[\s\n\?\:\.\;\,])\((4)\)[\s\:\-\.]*/g
     },
     {
       name: 'paren_close_num',
-      A: /(?:^|[\s\n])(?<![a-zA-Z0-9])(1)\)\s+/g,
-      B: /(?:^|[\s\n])(?<![a-zA-Z0-9])(2)\)\s+/g,
-      C: /(?:^|[\s\n])(?<![a-zA-Z0-9])(3)\)\s+/g,
-      D: /(?:^|[\s\n])(?<![a-zA-Z0-9])(4)\)\s+/g
+      A: /(?:^|[\s\n\?\:\.\;\,])(?<![a-zA-Z0-9])(1\)[\s\:\-\.]*)/g,
+      B: /(?:^|[\s\n\?\:\.\;\,])(?<![a-zA-Z0-9])(2\)[\s\:\-\.]*)/g,
+      C: /(?:^|[\s\n\?\:\.\;\,])(?<![a-zA-Z0-9])(3\)[\s\:\-\.]*)/g,
+      D: /(?:^|[\s\n\?\:\.\;\,])(?<![a-zA-Z0-9])(4\)[\s\:\-\.]*)/g
     },
     {
       name: 'bracket_num',
-      A: /(?:^|[\s\n])\[(1)\]\s+/g,
-      B: /(?:^|[\s\n])\[(2)\]\s+/g,
-      C: /(?:^|[\s\n])\[(3)\]\s+/g,
-      D: /(?:^|[\s\n])\[(4)\]\s+/g
+      A: /(?:^|[\s\n\?\:\.\;\,])\[(1)\][\s\:\-\.]*/g,
+      B: /(?:^|[\s\n\?\:\.\;\,])\[(2)\][\s\:\-\.]*/g,
+      C: /(?:^|[\s\n\?\:\.\;\,])\[(3)\][\s\:\-\.]*/g,
+      D: /(?:^|[\s\n\?\:\.\;\,])\[(4)\][\s\:\-\.]*/g
+    },
+    {
+      name: 'dot_num',
+      A: /(?:^|[\s\n\?\:\.\;\,])(?<![a-zA-Z0-9])(1)\.[\s\:\-]*/g,
+      B: /(?:^|[\s\n\?\:\.\;\,])(?<![a-zA-Z0-9])(2)\.[\s\:\-]*/g,
+      C: /(?:^|[\s\n\?\:\.\;\,])(?<![a-zA-Z0-9])(3)\.[\s\:\-]*/g,
+      D: /(?:^|[\s\n\?\:\.\;\,])(?<![a-zA-Z0-9])(4)\.[\s\:\-]*/g
+    },
+    {
+      name: 'roman_num',
+      A: /(?:^|[\s\n\?\:\.\;\,])\(([iI])\)[\s\:\-\.]*/g,
+      B: /(?:^|[\s\n\?\:\.\;\,])\((ii|II)\)[\s\:\-\.]*/g,
+      C: /(?:^|[\s\n\?\:\.\;\,])\((iii|III)\)[\s\:\-\.]*/g,
+      D: /(?:^|[\s\n\?\:\.\;\,])\((iv|IV)\)[\s\:\-\.]*/g
     }
   ];
 
@@ -173,26 +186,42 @@ export function extractQuestionAndOptions(rawBlock) {
 
     if (aMatches.length === 0 || bMatches.length === 0) continue;
 
-    // Test each valid pair where B occurs AFTER A
-    for (const aM of aMatches) {
-      const aStart = aM.index + (aM[0].startsWith(' ') || aM[0].startsWith('\n') ? 1 : 0);
+    for (const validB of bMatches) {
+      // Find candidate As before this B
+      const candidateAs = aMatches.filter((aM) => aM.index < validB.index);
+      if (candidateAs.length === 0) continue;
+      // Select the A immediately preceding B (closest to B)
+      const aM = candidateAs[candidateAs.length - 1];
+
+      const aMarkerOffset = aM[0].search(/[\(\[a-zA-Z0-9]/);
+      const aStart = aM.index + (aMarkerOffset !== -1 ? aMarkerOffset : 0);
       const aEnd = aM.index + aM[0].length;
 
-      const validB = bMatches.find((bM) => bM.index > aEnd);
-      if (!validB) continue;
-
-      const bStart = validB.index + (validB[0].startsWith(' ') || validB[0].startsWith('\n') ? 1 : 0);
+      const bMarkerOffset = validB[0].search(/[\(\[a-zA-Z0-9]/);
+      const bStart = validB.index + (bMarkerOffset !== -1 ? bMarkerOffset : 0);
       const bEnd = validB.index + validB[0].length;
 
+      if (aEnd > bStart) continue;
+
       let cMatches = style.C ? [...text.matchAll(style.C)] : [];
-      let validC = cMatches.find((cM) => cM.index > bEnd);
-      let cStart = validC ? validC.index + (validC[0].startsWith(' ') || validC[0].startsWith('\n') ? 1 : 0) : null;
-      let cEnd = validC ? validC.index + validC[0].length : null;
+      let validC = cMatches.find((cM) => cM.index >= bEnd);
+      let cStart = null;
+      let cEnd = null;
+      if (validC) {
+        const cMarkerOffset = validC[0].search(/[\(\[a-zA-Z0-9]/);
+        cStart = validC.index + (cMarkerOffset !== -1 ? cMarkerOffset : 0);
+        cEnd = validC.index + validC[0].length;
+      }
 
       let dMatches = (style.D && validC) ? [...text.matchAll(style.D)] : [];
-      let validD = dMatches.find((dM) => dM.index > cEnd);
-      let dStart = validD ? validD.index + (validD[0].startsWith(' ') || validD[0].startsWith('\n') ? 1 : 0) : null;
-      let dEnd = validD ? validD.index + validD[0].length : null;
+      let validD = dMatches.find((dM) => dM.index >= cEnd);
+      let dStart = null;
+      let dEnd = null;
+      if (validD) {
+        const dMarkerOffset = validD[0].search(/[\(\[a-zA-Z0-9]/);
+        dStart = validD.index + (dMarkerOffset !== -1 ? dMarkerOffset : 0);
+        dEnd = validD.index + validD[0].length;
+      }
 
       let score = 2; // Matched A and B
       if (validC) score += 2;

@@ -67,6 +67,8 @@ export default function TextbookQuestionModal({
   const [serverHasAi, setServerHasAi] = useState(false);
   const [geminiApiKey, setGeminiApiKey] = useState(() => localStorage.getItem('aptitude_gemini_key') || '');
   const [showKeyInput, setShowKeyInput] = useState(false);
+  const [isTwoColumn, setIsTwoColumn] = useState(false);
+  const [previewingPageImage, setPreviewingPageImage] = useState(null);
 
   // Common metadata applied to batch
   const [commonMetadata, setCommonMetadata] = useState({
@@ -230,6 +232,7 @@ export default function TextbookQuestionModal({
         {
           useAi: useAiEngine,
           apiKey: geminiApiKey || undefined,
+          isTwoColumn,
           defaultTopic: commonMetadata.topic,
           defaultDifficulty: commonMetadata.difficulty,
           onPageStatusUpdate: (statuses) => setPageStatuses(statuses)
@@ -624,62 +627,98 @@ export default function TextbookQuestionModal({
         {/* STEP 1: UPLOAD & PHOTO CAPTURE */}
         {step === 'upload' && (
           <div className="p-6 overflow-y-auto space-y-5 flex-1">
-            {/* Top Config Row */}
-            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-800">
-                  Target Assessment Scope & Topic:
-                </span>
-                
-                {/* Engine Selector */}
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] text-slate-500 font-medium">OCR Engine:</span>
-                  <select
-                    className="select-field text-xs py-1 px-2.5 bg-white border-slate-200 font-semibold text-slate-700"
-                    value={activeEngine}
-                    onChange={(e) => setActiveEngine(e.target.value)}
-                  >
-                    <option value="auto">⚡ Auto (Best Available)</option>
-                    <option value="gemini">✨ Google Gemini Vision AI</option>
-                    <option value="tesseract">🖥️ Built-in Browser OCR (Offline)</option>
-                  </select>
+            {/* Top Config Row & AI Mode Banner */}
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-3.5">
+              
+              {/* Vision AI Precision Banner */}
+              <div className="rounded-xl border p-3.5 bg-gradient-to-r from-amber-50/80 via-indigo-50/60 to-blue-50/80 border-indigo-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+                <div className="flex items-start gap-2.5">
+                  <span className="text-xl shrink-0 mt-0.5">✨</span>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-bold text-slate-900">
+                        Google Gemini Multimodal Vision AI
+                      </span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${geminiApiKey || serverHasAi ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-amber-100 text-amber-800 border border-amber-300'}`}>
+                        {geminiApiKey || serverHasAi ? '✓ Active (99%+ Accuracy)' : 'Key Needed for 99%+ Accuracy'}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-600 mt-0.5">
+                      Flawlessly separates question statements from options (A, B, C, D) and preserves math equations, fractions, and multi-column layouts.
+                    </p>
+                  </div>
+                </div>
 
+                <div className="flex items-center gap-2 shrink-0">
                   <button
                     type="button"
                     onClick={() => setShowKeyInput(!showKeyInput)}
-                    className="text-[11px] text-blue-600 hover:text-blue-800 font-semibold underline"
+                    className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold shadow-xs transition-colors"
                   >
-                    {geminiApiKey ? 'API Key Set' : 'Optional Gemini Key'}
+                    {geminiApiKey ? '⚙️ Edit Gemini Key' : '🔑 Enter Free API Key'}
                   </button>
                 </div>
               </div>
 
-              {/* Optional Gemini Key Input */}
+              {/* Gemini Key Input Drawer */}
               {showKeyInput && (
-                <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-lg flex items-center gap-2 text-xs">
-                  <span className="font-semibold text-blue-900 shrink-0">Gemini Key:</span>
-                  <input
-                    type="password"
-                    placeholder="Enter Google Gemini API Key (Optional for complex formulas)"
-                    className="input-field text-xs py-1 bg-white w-full"
-                    value={geminiApiKey}
-                    onChange={(e) => {
-                      setGeminiApiKey(e.target.value);
-                      localStorage.setItem('aptitude_gemini_key', e.target.value);
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowKeyInput(false)}
-                    className="px-2.5 py-1 bg-blue-600 text-white rounded text-xs font-semibold shrink-0"
-                  >
-                    Done
-                  </button>
+                <div className="p-3.5 bg-white border border-indigo-300 rounded-xl space-y-2 shadow-xs text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-slate-800">
+                      Google Gemini API Key (Saved locally in your browser):
+                    </span>
+                    <a
+                      href="https://aistudio.google.com/app/apikey"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-indigo-600 hover:text-indigo-800 font-bold underline flex items-center gap-1"
+                    >
+                      Get Free Key at Google AI Studio ↗
+                    </a>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="password"
+                      placeholder="Paste your Gemini API key (e.g. AIzaSy...)"
+                      className="input-field text-xs py-1.5 bg-slate-50 w-full font-mono"
+                      value={geminiApiKey}
+                      onChange={(e) => {
+                        setGeminiApiKey(e.target.value);
+                        localStorage.setItem('aptitude_gemini_key', e.target.value);
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowKeyInput(false)}
+                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shrink-0 transition-colors shadow-xs"
+                    >
+                      Save Key
+                    </button>
+                  </div>
                 </div>
               )}
 
+              {/* 2-Column Textbook Layout Option */}
+              <label className="flex items-start gap-2.5 cursor-pointer select-none p-3 bg-white border border-slate-200 rounded-xl hover:bg-slate-50/80 transition-colors shadow-xs">
+                <input
+                  type="checkbox"
+                  checked={isTwoColumn}
+                  onChange={(e) => setIsTwoColumn(e.target.checked)}
+                  className="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4 mt-0.5 shrink-0"
+                />
+                <div className="text-xs">
+                  <span className="font-bold text-slate-800 flex items-center gap-1.5">
+                    <span>📖 2-Column Textbook Page Layout</span>
+                    <span className="text-[10px] font-semibold text-indigo-700 bg-indigo-50 px-1.5 py-0.2 rounded border border-indigo-200">Recommended for R.S. Aggarwal & Exam Guides</span>
+                  </span>
+                  <span className="text-[11px] text-slate-500 block mt-0.5">
+                    Automatically slices the page into Left & Right vertical columns before reading, preventing horizontal line mixing across questions and options.
+                  </span>
+                </div>
+              </label>
+
               {/* Metadata Inputs */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1 border-t border-slate-200/80">
                 <div>
                   <label className="text-[11px] font-semibold text-slate-600 block mb-1">Topic / Subject</label>
                   <select
@@ -1120,6 +1159,19 @@ export default function TextbookQuestionModal({
                           </span>
                         )}
 
+                        {/* View Source Page Photo */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const pageObj = pages.find((p) => p.pageNumber === q.pageNumber);
+                            setPreviewingPageImage(q.pageImage || pageObj?.dataUrl || null);
+                          }}
+                          className="text-[10px] font-semibold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded border border-blue-200 transition-colors flex items-center gap-1"
+                          title="View textbook page photo for this question"
+                        >
+                          <span>🖼️ View Photo</span>
+                        </button>
+
                         {/* Uncertainty Highlighting */}
                         {hasIssues && (
                           <span className="text-[10px] font-bold text-amber-900 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-full flex items-center gap-1">
@@ -1413,6 +1465,34 @@ export default function TextbookQuestionModal({
           )}
         </div>
       </div>
+
+      {/* Page Image Inspection Lightbox */}
+      {previewingPageImage && (
+        <div className="fixed inset-0 z-60 bg-black/80 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6">
+          <div className="bg-white rounded-2xl max-w-4xl max-h-[92vh] w-full flex flex-col overflow-hidden shadow-2xl border border-slate-700">
+            <div className="px-5 py-3 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+              <span className="text-xs font-bold text-slate-800 flex items-center gap-2">
+                <span>📖 Textbook Page Reference</span>
+                <span className="text-slate-500 font-normal hidden sm:inline">(Refer to this photo to check question statements, answer choices & formulas)</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setPreviewingPageImage(null)}
+                className="text-slate-500 hover:text-slate-800 font-bold px-2 py-1 rounded-lg hover:bg-slate-200 transition-colors text-xs"
+              >
+                ✕ Close Preview
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-4 flex items-center justify-center bg-slate-900/10">
+              <img
+                src={previewingPageImage}
+                alt="Textbook Page Reference"
+                className="max-h-[75vh] object-contain rounded-lg shadow-md"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

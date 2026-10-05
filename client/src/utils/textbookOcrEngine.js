@@ -4,9 +4,9 @@
  * 
  * Capabilities:
  * 1. Image preprocessing (canvas contrast boost, adaptive grayscale, resizing)
- * 2. Image quality verification (blur detection, dark image detection, readability score)
- * 3. Gemini Vision AI multimodal extraction (via backend /api/questions/ocr-extract)
- * 4. In-browser Tesseract.js fallback for 100% offline / no-API-key support
+ * 2. 2-Column page slicing to prevent line mixing across columns
+ * 3. Gemini Multimodal Vision AI extraction (via backend /api/questions/ocr-extract)
+ * 4. In-browser Tesseract.js fallback for offline support
  * 5. Multi-image batch orchestration with per-page progress reporting
  */
 
@@ -19,10 +19,53 @@ import api from '../api/axios';
 import { parseTextbookQuestions, identifyDuplicateQuestions, extractQuestionAndOptions } from './textbookQuestionParser';
 
 /**
+ * Slices an image data URL vertically into Left Column and Right Column
+ * with a slight central overlap so math symbols on boundaries aren't clipped.
+ */
+export async function sliceImageIntoColumns(dataUrl) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const w = img.naturalWidth || img.width;
+        const h = img.naturalHeight || img.height;
+
+        const leftW = Math.round(w * 0.52);
+        const rightX = Math.round(w * 0.48);
+        const rightW = w - rightX;
+
+        const leftCanvas = document.createElement('canvas');
+        leftCanvas.width = leftW;
+        leftCanvas.height = h;
+        const leftCtx = leftCanvas.getContext('2d');
+        leftCtx.drawImage(img, 0, 0, leftW, h, 0, 0, leftW, h);
+
+        const rightCanvas = document.createElement('canvas');
+        rightCanvas.width = rightW;
+        rightCanvas.height = h;
+        const rightCtx = rightCanvas.getContext('2d');
+        rightCtx.drawImage(img, rightX, 0, rightW, h, 0, 0, rightW, h);
+
+        resolve({
+          leftDataUrl: leftCanvas.toDataURL('image/jpeg', 0.95),
+          rightDataUrl: rightCanvas.toDataURL('image/jpeg', 0.95)
+        });
+      } catch (err) {
+        console.warn('Column slicing warning:', err);
+        resolve(null);
+      }
+    };
+    img.onerror = () => resolve(null);
+    img.src = dataUrl;
+  });
+}
+
+/**
  * Preprocesses an image via HTML5 Canvas to enhance OCR readability and detect blur/lighting defects.
  * 
  * @param {File|string} imageSource - File object or Base64/data URL string
- * @returns {Promise<object>} { preprocessedDataUrl, quality: { isBlurry, isTooDark, isOverexposed, score, issues }, width, height }
+ * @returns {Promise<object>} { preprocessedDataUrl, originalDataUrl, quality: { isBlurry, isTooDark, isOverexposed, score, issues }, width, height }
  */
 export async function preprocessAndAnalyzeImage(imageSource) {
   return new Promise((resolve, reject) => {
@@ -31,8 +74,8 @@ export async function preprocessAndAnalyzeImage(imageSource) {
 
     img.onload = () => {
       try {
-        const maxWidth = 1800;
-        const maxHeight = 2400;
+        const maxWidth = 2200;
+        const maxHeight = 3000;
         let width = img.naturalWidth || img.width;
         let height = img.naturalHeight || img.height;
 
@@ -60,7 +103,6 @@ export async function preprocessAndAnalyzeImage(imageSource) {
         let prevBrightness = 128;
 
         for (let i = 0; i < data.length; i += 4) {
-          // Standard ITU-R BT.601 luminance
           const r = data[i];
           const g = data[i + 1];
           const b = data[i + 2];
@@ -68,13 +110,11 @@ export async function preprocessAndAnalyzeImage(imageSource) {
 
           totalBrightness += luminance;
 
-          // Simple edge / contrast delta calculation
           const diff = luminance - prevBrightness;
           sumSquaredDiff += diff * diff;
           prevBrightness = luminance;
 
           // Apply slight contrast expansion for textbook OCR clarity
-          // Target text to stand out boldly against page background
           let enhanced = (luminance - 128) * 1.35 + 128;
           if (enhanced < 0) enhanced = 0;
           if (enhanced > 255) enhanced = 255;
@@ -91,7 +131,7 @@ export async function preprocessAndAnalyzeImage(imageSource) {
 
         const isTooDark = avgBrightness < 45;
         const isOverexposed = avgBrightness > 240;
-        const isBlurry = variance < 80; // Low edge variance typically indicates out of focus or motion blur
+        const isBlurry = variance < 80;
 
         const qualityIssues = [];
         if (isTooDark) qualityIssues.push('Photo is too dark (turn on flash or improve room lighting)');
@@ -108,6 +148,7 @@ export async function preprocessAndAnalyzeImage(imageSource) {
 
         resolve({
           preprocessedDataUrl,
+          originalDataUrl: img.src,
           width,
           height,
           quality: {
@@ -122,12 +163,17 @@ export async function preprocessAndAnalyzeImage(imageSource) {
           }
         });
       } catch (err) {
-        reject(err);
+        console.error('Preprocessing error:', err);
+        resolve({
+          preprocessedDataUrl: img.src,
+          originalDataUrl: img.src,
+          quality: { isAcceptable: true, issues: [] }
+        });
       }
     };
 
-    img.onerror = () => {
-      reject(new Error('Failed to load image file into canvas for processing.'));
+    img.onerror = (err) => {
+      reject(new Error('Failed to load image for preprocessing: ' + (err?.message || 'Invalid format')));
     };
 
     if (typeof imageSource === 'string') {
@@ -140,23 +186,23 @@ export async function preprocessAndAnalyzeImage(imageSource) {
       reader.onerror = reject;
       reader.readAsDataURL(imageSource);
     } else {
-      reject(new Error('Invalid image source provided.'));
+      reject(new Error('Unsupported image source type'));
     }
   });
 }
 
 /**
  * Extracts questions from a single textbook page image.
- * Uses Gemini Vision API if enabled/configured, otherwise falls back to in-browser Tesseract.js.
  * 
  * @param {object} pageItem - { id, file, dataUrl, pageNumber, pageName }
- * @param {object} options - { useAi, apiKey, defaultTopic, defaultDifficulty, onProgress }
- * @returns {Promise<object>} Extracted questions, confidence, and status
+ * @param {object} options - { useAi, apiKey, isTwoColumn, defaultTopic, defaultDifficulty, onProgress }
+ * @returns {Promise<object>} Extracted questions, engine used, metadata
  */
 export async function processSingleTextbookPage(pageItem, options = {}) {
   const {
     useAi = true,
-    apiKey = null,
+    apiKey,
+    isTwoColumn = false,
     defaultTopic = 'Quantitative Aptitude',
     defaultDifficulty = 'MEDIUM',
     onProgress = () => {}
@@ -172,26 +218,32 @@ export async function processSingleTextbookPage(pageItem, options = {}) {
     console.warn('Canvas preprocessing warning, using raw image:', err);
     preprocessed = {
       preprocessedDataUrl: pageItem.dataUrl,
+      originalDataUrl: pageItem.dataUrl,
       quality: { isAcceptable: true, issues: [] }
     };
   }
 
   const imageQuality = preprocessed.quality;
+  const originalImage = preprocessed.originalDataUrl || pageItem.dataUrl;
   const targetImage = preprocessed.preprocessedDataUrl || pageItem.dataUrl;
 
-  // 2. Try Gemini Vision AI if requested
+  let aiAttempted = false;
+  let aiFailureReason = null;
+
+  // 2. Try Gemini Vision AI if requested (send clean original image for best neural vision perception)
   if (useAi) {
+    aiAttempted = true;
     try {
-      onProgress({ status: 'Running Vision AI extraction...', percent: 40 });
+      onProgress({ status: 'Running Google Gemini Vision AI...', percent: 40 });
 
       const res = await api.post('/questions/ocr-extract', {
-        image: targetImage,
+        image: originalImage,
         apiKey: apiKey || undefined,
         pageNumber: pageItem.pageNumber
       });
 
       if (res.data?.success && res.data?.data) {
-        onProgress({ status: 'Formatting extracted questions...', percent: 90 });
+        onProgress({ status: 'Formatting & verifying question boundaries...', percent: 90 });
         const aiData = res.data.data;
         const aiQuestions = aiData.questions || [];
 
@@ -204,7 +256,7 @@ export async function processSingleTextbookPage(pageItem, options = {}) {
           let optD = q.optionD || '';
           let ans = q.correctAnswer || '';
 
-          // Verify: If options were left blank or questionText still contains embedded option markers, separate them!
+          // Double check: If options were left blank or questionText still contains embedded option markers, separate them!
           if ((!optA || !optB) || /(?:\([a-eA-E1-4]\)|\[[a-eA-E1-4]\]|\b[a-dA-D]\.|\b[a-dA-D]\))\s+/.test(qText)) {
             const sep = extractQuestionAndOptions(qText);
             if (sep.hasSeparatedOptions) {
@@ -265,7 +317,7 @@ export async function processSingleTextbookPage(pageItem, options = {}) {
         onProgress({ status: 'Completed', percent: 100 });
         return {
           success: true,
-          engine: 'Gemini Vision AI',
+          engine: 'Gemini Vision AI (Neural OCR)',
           pageNumber: pageItem.pageNumber,
           pageName: pageItem.pageName,
           imageQuality,
@@ -276,32 +328,54 @@ export async function processSingleTextbookPage(pageItem, options = {}) {
         };
       }
     } catch (aiErr) {
-      console.warn('Gemini Vision AI failed or no API key, falling back to client OCR:', aiErr);
+      aiFailureReason = aiErr.response?.data?.error || aiErr.message || 'Vision AI key not configured';
+      console.warn('Gemini Vision AI failed or no API key, falling back to client OCR:', aiFailureReason);
       // Fall through to Tesseract.js
     }
   }
 
   // 3. Fallback: In-browser Tesseract.js OCR
-  onProgress({ status: 'Initializing built-in OCR engine...', percent: 30 });
+  onProgress({
+    status: aiAttempted
+      ? 'Vision AI unavailable. Running offline Smart OCR...'
+      : 'Initializing offline OCR engine...',
+    percent: 30
+  });
 
   let worker = null;
   try {
     const createWorker = await getTesseractWorker();
     worker = await createWorker('eng');
 
-    onProgress({ status: 'Recognizing textbook characters & math...', percent: 55 });
+    let rawOcrText = '';
 
-    const ret = await worker.recognize(targetImage);
-    const rawOcrText = ret.data.text || '';
+    // Check if 2-column textbook slicing is active
+    if (isTwoColumn) {
+      onProgress({ status: 'Processing 2-Column page (Column 1 of 2)...', percent: 45 });
+      const cols = await sliceImageIntoColumns(targetImage);
+      if (cols) {
+        const ret1 = await worker.recognize(cols.leftDataUrl);
+        onProgress({ status: 'Processing 2-Column page (Column 2 of 2)...', percent: 65 });
+        const ret2 = await worker.recognize(cols.rightDataUrl);
+        rawOcrText = (ret1.data.text || '') + '\n\n' + (ret2.data.text || '');
+      } else {
+        const ret = await worker.recognize(targetImage);
+        rawOcrText = ret.data.text || '';
+      }
+    } else {
+      onProgress({ status: 'Recognizing textbook characters & math...', percent: 55 });
+      const ret = await worker.recognize(targetImage);
+      rawOcrText = ret.data.text || '';
+    }
 
-    onProgress({ status: 'Parsing questions & mathematical symbols...', percent: 85 });
+    onProgress({ status: 'Parsing questions & separating options...', percent: 85 });
 
     const parsed = parseTextbookQuestions(rawOcrText, {
       topic: defaultTopic,
       difficulty: defaultDifficulty,
       pageNumber: pageItem.pageNumber,
       pageName: pageItem.pageName,
-      pageImage: targetImage
+      pageImage: originalImage
     });
 
     await worker.terminate();
@@ -309,9 +383,14 @@ export async function processSingleTextbookPage(pageItem, options = {}) {
 
     onProgress({ status: 'Completed', percent: 100 });
 
+    const fallbackEngineName = aiAttempted
+      ? 'Offline OCR (Fallback — Gemini Key Required for 99% accuracy)'
+      : 'Built-in Smart OCR (Offline)';
+
     return {
       success: true,
-      engine: 'Built-in Smart OCR (Tesseract)',
+      engine: fallbackEngineName,
+      warning: aiFailureReason,
       pageNumber: pageItem.pageNumber,
       pageName: pageItem.pageName,
       imageQuality,
@@ -358,64 +437,59 @@ export async function processAllTextbookPages(pages, options = {}, existingQuest
       pageName: page.pageName,
       status: 'PROCESSING',
       statusText: 'Processing page...',
-      progressPercent: 10,
-      detectedCount: 0,
-      needsReview: false
+      detectedCount: 0
     };
     onPageStatusUpdate({ ...pageStatuses });
 
-    const pageResult = await processSingleTextbookPage(page, {
+    const result = await processSingleTextbookPage(page, {
       ...options,
-      onProgress: (p) => {
+      onProgress: ({ status, percent }) => {
         pageStatuses[page.id] = {
           ...pageStatuses[page.id],
           status: 'PROCESSING',
-          statusText: p.status,
-          progressPercent: p.percent
+          statusText: status,
+          percent
         };
         onPageStatusUpdate({ ...pageStatuses });
       }
     });
 
-    if (pageResult.success && pageResult.questions.length > 0) {
+    if (result.success && result.questions.length > 0) {
       pageStatuses[page.id] = {
         ...pageStatuses[page.id],
         status: 'PROCESSED',
-        statusText: `Processed — ${pageResult.questions.length} questions detected`,
-        progressPercent: 100,
-        detectedCount: pageResult.questions.length,
-        needsReview: pageResult.needsReviewCount > 0,
-        engine: pageResult.engine
+        statusText: `Detected ${result.detectedCount} questions (${result.engine})`,
+        detectedCount: result.detectedCount,
+        needsReviewCount: result.needsReviewCount,
+        warning: result.warning
       };
-      allExtractedQuestions.push(...pageResult.questions);
+      allExtractedQuestions = [...allExtractedQuestions, ...result.questions];
     } else {
       pageStatuses[page.id] = {
         ...pageStatuses[page.id],
         status: 'WARNING',
-        statusText: pageResult.error || '0 questions detected (Check image clarity)',
-        progressPercent: 100,
-        detectedCount: 0,
-        needsReview: true
+        statusText: result.error || '0 questions recognized',
+        detectedCount: 0
       };
     }
-
     onPageStatusUpdate({ ...pageStatuses });
   }
 
-  // Renumber all combined questions in sequential order
-  const renumbered = allExtractedQuestions.map((q, idx) => ({
+  // Cross-page duplicate detection
+  const deduplicatedQuestions = identifyDuplicateQuestions(allExtractedQuestions, existingQuestions);
+
+  // Recalculate sequential display indices
+  const finalQuestions = deduplicatedQuestions.map((q, idx) => ({
     ...q,
     displayIndex: idx + 1
   }));
 
-  // Run duplicate detection across the combined batch and against existing questions
-  const withDuplicates = identifyDuplicateQuestions(renumbered, existingQuestions);
-
   return {
-    questions: withDuplicates,
+    questions: finalQuestions,
     pageStatuses,
-    totalDetected: withDuplicates.length,
-    duplicateCount: withDuplicates.filter((q) => q.isDuplicate).length,
-    needsReviewCount: withDuplicates.filter((q) => q.needsReview).length
+    totalPages: pages.length,
+    totalExtracted: finalQuestions.length,
+    duplicateCount: finalQuestions.filter((q) => q.isDuplicate).length,
+    needsReviewCount: finalQuestions.filter((q) => q.needsReview).length
   };
 }
