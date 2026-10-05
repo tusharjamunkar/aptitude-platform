@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { BookOpenIcon, PlusIcon, DocumentTextIcon, ClipboardListIcon, AlertIcon, CheckCircleIcon, CameraIcon } from '../../components/Icons';
 import BulkQuestionModal from '../../components/BulkQuestionModal';
 import TextbookQuestionModal from '../../components/TextbookQuestionModal';
+import ErrorBoundary from '../../components/ErrorBoundary';
 
 export default function QuestionBank() {
   const [questions, setQuestions] = useState([]);
@@ -526,14 +527,18 @@ export default function QuestionBank() {
       />
 
       {/* Textbook Capture & AI OCR Modal */}
-      <TextbookQuestionModal
-        isOpen={showTextbookModal}
-        onClose={() => setShowTextbookModal(false)}
-        onQuestionsAdded={fetchQuestions}
-        existingQuestions={questions}
-        initialTopic={topicFilter !== 'All' ? topicFilter : 'Quantitative Aptitude'}
-        isAssessmentMode={false}
-      />
+      {showTextbookModal && (
+        <ErrorBoundary>
+          <TextbookQuestionModal
+            isOpen={showTextbookModal}
+            onClose={() => setShowTextbookModal(false)}
+            onQuestionsAdded={fetchQuestions}
+            existingQuestions={questions}
+            initialTopic={topicFilter !== 'All' ? topicFilter : 'Quantitative Aptitude'}
+            isAssessmentMode={false}
+          />
+        </ErrorBoundary>
+      )}
     </div>
   );
 }

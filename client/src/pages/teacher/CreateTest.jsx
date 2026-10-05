@@ -14,6 +14,7 @@ import {
 } from '../../components/Icons';
 import BulkQuestionModal from '../../components/BulkQuestionModal';
 import TextbookQuestionModal from '../../components/TextbookQuestionModal';
+import ErrorBoundary from '../../components/ErrorBoundary';
 
 export default function CreateTest() {
   const navigate = useNavigate();
@@ -1225,14 +1226,18 @@ export default function CreateTest() {
       />
 
       {/* Textbook Capture & AI OCR Modal */}
-      <TextbookQuestionModal
-        isOpen={showTextbookModal}
-        onClose={() => setShowTextbookModal(false)}
-        onQuestionsAdded={handleTextbookQuestionsAdded}
-        existingQuestions={questions}
-        initialTopic={formData.topic || formData.subject || 'Quantitative Aptitude'}
-        isAssessmentMode={true}
-      />
+      {showTextbookModal && (
+        <ErrorBoundary>
+          <TextbookQuestionModal
+            isOpen={showTextbookModal}
+            onClose={() => setShowTextbookModal(false)}
+            onQuestionsAdded={handleTextbookQuestionsAdded}
+            existingQuestions={questions}
+            initialTopic={formData.topic || formData.subject || 'Quantitative Aptitude'}
+            isAssessmentMode={true}
+          />
+        </ErrorBoundary>
+      )}
     </div>
   );
 }

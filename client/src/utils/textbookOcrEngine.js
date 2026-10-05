@@ -10,7 +10,11 @@
  * 5. Multi-image batch orchestration with per-page progress reporting
  */
 
-import { createWorker } from 'tesseract.js';
+// Tesseract.js is dynamically imported only if offline OCR is requested
+async function getTesseractWorker() {
+  const { createWorker } = await import('tesseract.js');
+  return createWorker;
+}
 import api from '../api/axios';
 import { parseTextbookQuestions, identifyDuplicateQuestions } from './textbookQuestionParser';
 
@@ -247,6 +251,7 @@ export async function processSingleTextbookPage(pageItem, options = {}) {
 
   let worker = null;
   try {
+    const createWorker = await getTesseractWorker();
     worker = await createWorker('eng');
 
     onProgress({ status: 'Recognizing textbook characters & math...', percent: 55 });

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import api from '../api/axios';
 import toast from 'react-hot-toast';
 import { 
@@ -104,19 +104,33 @@ export default function TextbookQuestionModal({
     }
   }, [isOpen]);
 
-  // Clean up camera stream on unmount
+  const stopCameraStream = () => {
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+      mediaStreamRef.current = null;
+    }
+    setShowCameraStream(false);
+  };
+
+  // Clean up camera stream on unmount or when modal is closed
   useEffect(() => {
+    if (!isOpen) {
+      stopCameraStream();
+    }
     return () => {
       stopCameraStream();
     };
-  }, []);
-
-  if (!isOpen) return null;
+  }, [isOpen]);
 
   // Camera capture helpers
   const startCameraStream = async () => {
     try {
       setShowCameraStream(true);
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        toast.error('Camera access is not supported by your browser in this mode. Please upload photos instead.');
+        setShowCameraStream(false);
+        return;
+      }
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } },
         audio: false
@@ -130,14 +144,6 @@ export default function TextbookQuestionModal({
       toast.error('Unable to access device camera. Please upload an image instead.');
       setShowCameraStream(false);
     }
-  };
-
-  const stopCameraStream = () => {
-    if (mediaStreamRef.current) {
-      mediaStreamRef.current.getTracks().forEach((track) => track.stop());
-      mediaStreamRef.current = null;
-    }
-    setShowCameraStream(false);
   };
 
   const capturePhotoFromCamera = () => {
@@ -459,12 +465,14 @@ export default function TextbookQuestionModal({
     }
   };
 
-  const selectedCount = useMemo(() => questions.filter((q) => q.isSelected).length, [questions]);
-  const duplicateCount = useMemo(() => questions.filter((q) => q.isDuplicate).length, [questions]);
-  const attentionCount = useMemo(() => questions.filter((q) => q.needsReview).length, [questions]);
+  const selectedCount = questions.filter((q) => q.isSelected).length;
+  const duplicateCount = questions.filter((q) => q.isDuplicate).length;
+  const attentionCount = questions.filter((q) => q.needsReview).length;
+
+  if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
       <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[94vh] flex flex-col overflow-hidden border border-slate-200">
         
         {/* HEADER BAR */}

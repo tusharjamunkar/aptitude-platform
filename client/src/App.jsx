@@ -17,6 +17,7 @@ import StudentMilestones from './pages/student/StudentMilestones';
 import TestHistory from './pages/student/TestHistory';
 import NotFound from './pages/NotFound';
 import Layout from './components/Layout';
+import ErrorBoundary from './components/ErrorBoundary';
 
 function ProtectedRoute({ children, role }) {
   const { user, loading } = useAuth();
@@ -127,11 +128,13 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <AppRoutes />
-        <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
-      </BrowserRouter>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <BrowserRouter>
+          <AppRoutes />
+          <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
+        </BrowserRouter>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
