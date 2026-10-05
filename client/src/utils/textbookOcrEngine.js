@@ -16,7 +16,7 @@ async function getTesseractWorker() {
   return createWorker;
 }
 import api from '../api/axios';
-import { parseTextbookQuestions, identifyDuplicateQuestions } from './textbookQuestionParser';
+import { parseTextbookQuestions, identifyDuplicateQuestions, extractQuestionAndOptions } from './textbookQuestionParser';
 
 /**
  * Preprocesses an image via HTML5 Canvas to enhance OCR readability and detect blur/lighting defects.
@@ -195,37 +195,72 @@ export async function processSingleTextbookPage(pageItem, options = {}) {
         const aiData = res.data.data;
         const aiQuestions = aiData.questions || [];
 
-        // Format into standard assessment question objects
-        const formatted = aiQuestions.map((q, idx) => ({
-          id: 'tb_ai_' + Date.now() + '_' + pageItem.pageNumber + '_' + idx,
-          displayIndex: idx + 1,
-          originalNumber: q.originalNumber || (idx + 1).toString(),
-          questionText: q.questionText || '',
-          optionA: q.optionA || '',
-          optionB: q.optionB || '',
-          optionC: q.optionC || '',
-          optionD: q.optionD || '',
-          optionsList: [
-            { key: 'A', text: q.optionA || '' },
-            { key: 'B', text: q.optionB || '' },
-            { key: 'C', text: q.optionC || '' },
-            { key: 'D', text: q.optionD || '' }
-          ],
-          correctAnswer: q.correctAnswer || '',
-          marks: 1,
-          negativeMarks: 0,
-          topic: defaultTopic,
-          difficulty: defaultDifficulty,
-          sourceExam: `Textbook Page ${pageItem.pageNumber}`,
-          pageNumber: pageItem.pageNumber,
-          pageName: pageItem.pageName,
-          confidence: q.confidence ?? 0.95,
-          needsReview: Boolean(q.needsReview || !q.correctAnswer),
-          issues: q.needsReview && q.uncertaintyReason ? [q.uncertaintyReason] : !q.correctAnswer ? ['Teacher needs to select correct answer'] : [],
-          isSelected: true,
-          isDuplicate: false,
-          duplicateOf: null
-        }));
+        // Format into standard assessment question objects with strict question vs option boundary verification
+        const formatted = aiQuestions.map((q, idx) => {
+          let qText = q.questionText || '';
+          let optA = q.optionA || '';
+          let optB = q.optionB || '';
+          let optC = q.optionC || '';
+          let optD = q.optionD || '';
+          let ans = q.correctAnswer || '';
+
+          // Verify: If options were left blank or questionText still contains embedded option markers, separate them!
+          if ((!optA || !optB) || /(?:\([a-eA-E1-4]\)|\[[a-eA-E1-4]\]|\b[a-dA-D]\.|\b[a-dA-D]\))\s+/.test(qText)) {
+            const sep = extractQuestionAndOptions(qText);
+            if (sep.hasSeparatedOptions) {
+              qText = sep.questionText;
+              if (!optA) optA = sep.optionA;
+              if (!optB) optB = sep.optionB;
+              if (!optC) optC = sep.optionC;
+              if (!optD) optD = sep.optionD;
+              if (!ans && sep.correctAnswer) ans = sep.correctAnswer;
+            }
+          }
+
+          const hasAllOpts = Boolean(optA && optB && optC && optD);
+          const issues = [];
+          if (!hasAllOpts) {
+            const count = [optA, optB, optC, optD].filter(Boolean).length;
+            issues.push(`Detected ${count}/4 options`);
+          }
+          if (q.needsReview && q.uncertaintyReason) {
+            issues.push(q.uncertaintyReason);
+          }
+          if (!ans) {
+            issues.push('Teacher needs to select correct answer');
+          }
+
+          return {
+            id: 'tb_ai_' + Date.now() + '_' + pageItem.pageNumber + '_' + idx,
+            displayIndex: idx + 1,
+            originalNumber: q.originalNumber || (idx + 1).toString(),
+            questionText: qText,
+            optionA: optA,
+            optionB: optB,
+            optionC: optC,
+            optionD: optD,
+            optionsList: [
+              { key: 'A', text: optA },
+              { key: 'B', text: optB },
+              { key: 'C', text: optC },
+              { key: 'D', text: optD }
+            ],
+            correctAnswer: ans,
+            marks: 1,
+            negativeMarks: 0,
+            topic: defaultTopic,
+            difficulty: defaultDifficulty,
+            sourceExam: `Textbook Page ${pageItem.pageNumber}`,
+            pageNumber: pageItem.pageNumber,
+            pageName: pageItem.pageName,
+            confidence: q.confidence ?? (hasAllOpts ? 0.95 : 0.7),
+            needsReview: issues.length > 0,
+            issues,
+            isSelected: true,
+            isDuplicate: false,
+            duplicateOf: null
+          };
+        });
 
         onProgress({ status: 'Completed', percent: 100 });
         return {

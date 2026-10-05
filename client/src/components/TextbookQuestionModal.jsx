@@ -14,6 +14,7 @@ import {
   PlusIcon
 } from './Icons';
 import { processAllTextbookPages, processSingleTextbookPage, preprocessAndAnalyzeImage } from '../utils/textbookOcrEngine';
+import { extractQuestionAndOptions } from '../utils/textbookQuestionParser';
 
 const PREDEFINED_TOPICS = [
   'Quantitative Aptitude',
@@ -361,6 +362,120 @@ export default function TextbookQuestionModal({
       })
     );
     toast.success(`Assigned Option ${answerKey} to unassigned questions`);
+  };
+
+  // Re-separate question prompt and options A, B, C, D for a single question
+  const handleSeparateOptionsForQuestion = (qIndex) => {
+    setQuestions((prev) => {
+      const updated = [...prev];
+      const target = { ...updated[qIndex] };
+      const combinedText = [
+        target.questionText,
+        target.optionA ? `(A) ${target.optionA}` : '',
+        target.optionB ? `(B) ${target.optionB}` : '',
+        target.optionC ? `(C) ${target.optionC}` : '',
+        target.optionD ? `(D) ${target.optionD}` : ''
+      ].filter(Boolean).join(' ');
+
+      const separated = extractQuestionAndOptions(combinedText);
+      if (separated.hasSeparatedOptions) {
+        target.questionText = separated.questionText;
+        target.optionA = separated.optionA || target.optionA;
+        target.optionB = separated.optionB || target.optionB;
+        target.optionC = separated.optionC || target.optionC;
+        target.optionD = separated.optionD || target.optionD;
+        if (!target.correctAnswer && separated.correctAnswer) {
+          target.correctAnswer = separated.correctAnswer;
+        }
+        target.optionsList = [
+          { key: 'A', text: target.optionA },
+          { key: 'B', text: target.optionB },
+          { key: 'C', text: target.optionC },
+          { key: 'D', text: target.optionD }
+        ];
+
+        const issues = [];
+        const hasAll = Boolean(target.optionA && target.optionB && target.optionC && target.optionD);
+        if (!hasAll) {
+          const count = [target.optionA, target.optionB, target.optionC, target.optionD].filter(Boolean).length;
+          issues.push(`Found ${count}/4 options`);
+        }
+        if (!target.correctAnswer) {
+          issues.push('Teacher needs to select correct answer');
+        }
+        target.issues = issues;
+        target.needsReview = issues.length > 0;
+        updated[qIndex] = target;
+        toast.success(`Separated question and options for Question #${target.displayIndex}`);
+      } else {
+        toast.error('Could not detect distinct option markers (A, B, C, D) in this text.');
+      }
+      return updated;
+    });
+  };
+
+  // Auto-separate options across all questions in the review list
+  const handleSeparateAllOptions = () => {
+    let modifiedCount = 0;
+    setQuestions((prev) =>
+      prev.map((target) => {
+        const hasMarkersInPrompt = /(?:\([a-eA-E1-4]\)|\[[a-eA-E1-4]\]|\b[a-dA-D]\.|\b[a-dA-D]\))\s+/i.test(target.questionText);
+        const missingOptions = !target.optionA || !target.optionB;
+
+        if (hasMarkersInPrompt || missingOptions) {
+          const combined = [
+            target.questionText,
+            target.optionA ? `(A) ${target.optionA}` : '',
+            target.optionB ? `(B) ${target.optionB}` : '',
+            target.optionC ? `(C) ${target.optionC}` : '',
+            target.optionD ? `(D) ${target.optionD}` : ''
+          ].filter(Boolean).join(' ');
+
+          const separated = extractQuestionAndOptions(combined);
+          if (separated.hasSeparatedOptions) {
+            modifiedCount++;
+            const optA = separated.optionA || target.optionA;
+            const optB = separated.optionB || target.optionB;
+            const optC = separated.optionC || target.optionC;
+            const optD = separated.optionD || target.optionD;
+            const ans = target.correctAnswer || separated.correctAnswer || '';
+
+            const issues = [];
+            if (!optA || !optB || !optC || !optD) {
+              const count = [optA, optB, optC, optD].filter(Boolean).length;
+              issues.push(`Found ${count}/4 options`);
+            }
+            if (!ans) {
+              issues.push('Teacher needs to select correct answer');
+            }
+
+            return {
+              ...target,
+              questionText: separated.questionText,
+              optionA: optA,
+              optionB: optB,
+              optionC: optC,
+              optionD: optD,
+              optionsList: [
+                { key: 'A', text: optA },
+                { key: 'B', text: optB },
+                { key: 'C', text: optC },
+                { key: 'D', text: optD }
+              ],
+              correctAnswer: ans,
+              issues,
+              needsReview: issues.length > 0
+            };
+          }
+        }
+        return target;
+      })
+    );
+    if (modifiedCount > 0) {
+      toast.success(`Cleaned & separated options across ${modifiedCount} question(s)!`);
+    } else {
+      toast.info('Options are already properly separated across all questions.');
+    }
   };
 
   // Retry extraction on a single question
@@ -949,8 +1064,18 @@ export default function TextbookQuestionModal({
               <div className="flex items-center gap-2">
                 <button
                   type="button"
+                  onClick={handleSeparateAllOptions}
+                  className="text-xs font-bold text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-3 py-1 rounded-lg transition-colors flex items-center gap-1.5 shadow-xs"
+                  title="Automatically scan and cleanly separate question prompts from answer options across all questions"
+                >
+                  <SparklesIcon className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>Auto-Separate Options (All)</span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => setStep('upload')}
-                  className="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                  className="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1 bg-white border border-slate-200 px-2.5 py-1 rounded-lg shadow-xs"
                 >
                   <PlusIcon className="w-3.5 h-3.5" />
                   <span>Add Another Page Photo</span>
@@ -1024,8 +1149,18 @@ export default function TextbookQuestionModal({
                         )}
                       </div>
 
-                      {/* Header Actions: Reorder, Retry, Delete */}
+                      {/* Header Actions: Separate Options, Reorder, Retry, Delete */}
                       <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => handleSeparateOptionsForQuestion(idx)}
+                          className="px-2 py-1 text-[11px] font-bold text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 rounded-md flex items-center gap-1 border border-indigo-200 transition-colors"
+                          title="Click to automatically split options out of question text"
+                        >
+                          <SparklesIcon className="w-3.5 h-3.5 text-indigo-600" />
+                          <span>Separate Options</span>
+                        </button>
+
                         <button
                           type="button"
                           disabled={idx === 0}
@@ -1068,15 +1203,40 @@ export default function TextbookQuestionModal({
 
                     {/* Question Prompt Editor */}
                     <div className="mb-3">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
-                        Question Prompt (Edit if necessary):
-                      </label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                          Question Prompt Statement (No Options):
+                        </label>
+                        <span className="text-[10px] text-slate-400">
+                          Problem statement / formula only
+                        </span>
+                      </div>
                       <textarea
                         rows={2}
-                        className="input-field text-xs py-1.5 font-medium bg-white leading-relaxed"
+                        className="input-field text-xs py-1.5 font-medium bg-white leading-relaxed border-slate-300"
                         value={q.questionText}
                         onChange={(e) => handleUpdateQuestionField(idx, 'questionText', e.target.value)}
                       />
+
+                      {/* Smart Detection Alert if prompt contains embedded options */}
+                      {((/(?:\([a-eA-E1-4]\)|\[[a-eA-E1-4]\]|\b[a-dA-D]\.|\b[a-dA-D]\))\s+/i.test(q.questionText)) || (!q.optionA && !q.optionB)) && (
+                        <div className="mt-1.5 p-2 bg-indigo-50/90 border border-indigo-200 rounded-lg flex items-center justify-between gap-2 text-xs">
+                          <div className="flex items-center gap-1.5 text-indigo-900">
+                            <span className="text-sm">⚡</span>
+                            <span className="text-[11px] font-semibold">
+                              Answer choices detected inside prompt text
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleSeparateOptionsForQuestion(idx)}
+                            className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-[11px] font-bold transition-all shadow-xs shrink-0 flex items-center gap-1"
+                          >
+                            <SparklesIcon className="w-3 h-3" />
+                            <span>Separate into Options A-D →</span>
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     {/* Options Grid (A, B, C, D) with Answer Radio Buttons */}

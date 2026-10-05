@@ -5,8 +5,9 @@
  * Features:
  * - Mathematical symbol preservation (fractions, superscripts, subscripts, Greek letters, operators)
  * - Multi-question boundary detection on single or multiple pages
- * - Robust option detection (A, B, C, D, inline and block formats)
- * - OCR artifact cleanup and math normalization
+ * - High-precision question statement vs answer choices (A, B, C, D) separator
+ * - Handles horizontal, vertical, 2x2 grid, inline, and numbered (1-4) options
+ * - Answer key extraction (e.g. Ans: A, Answer - (2))
  * - Confidence scoring & uncertainty flagging
  * - Duplicate similarity calculation (Levenshtein / Token Jaccard)
  */
@@ -57,7 +58,313 @@ export function cleanTextbookMathAndText(text) {
 }
 
 /**
- * Parses raw OCR text into structured question objects.
+ * High-precision algorithm to separate a question block into:
+ * - Question Prompt Statement (without options)
+ * - Option A, Option B, Option C, Option D
+ * - Correct Answer (if embedded)
+ * 
+ * Works for inline, multi-line, 2x2 grid, lettered (A-D / a-d), and numbered (1-4) options.
+ * 
+ * @param {string} rawBlock - Raw text of a single question
+ * @returns {object} { qNumber, questionText, optionA, optionB, optionC, optionD, correctAnswer, hasSeparatedOptions }
+ */
+export function extractQuestionAndOptions(rawBlock) {
+  if (!rawBlock || typeof rawBlock !== 'string') {
+    return {
+      qNumber: null,
+      questionText: '',
+      optionA: '',
+      optionB: '',
+      optionC: '',
+      optionD: '',
+      correctAnswer: '',
+      hasSeparatedOptions: false
+    };
+  }
+
+  let text = rawBlock.trim();
+
+  // 1. Extract and strip leading question number (e.g., "1.", "Q2.", "3)", "Question 4:")
+  let qNumber = null;
+  const numMatch = text.match(/^\s*(?:Q(?:uestion)?\.?\s*)?(\d+)[\.\:\)\-\]]\s*/i);
+  if (numMatch) {
+    qNumber = numMatch[1];
+    text = text.substring(numMatch[0].length).trim();
+  }
+
+  // 2. Extract embedded answer key at the end (e.g. "Ans: B", "Answer: (1)", "Key - C")
+  let correctAnswer = '';
+  const ansMatch = text.match(/(?:[\n\s]+|^)(?:Ans(?:wer)?|Correct\s*(?:Option|Answer)?|Key)[\s\:\-\=]+[\(\[]?([A-Da-d1-4])[\)\]\.]?\s*$/i);
+  if (ansMatch) {
+    let rawAns = ansMatch[1].toUpperCase();
+    if (rawAns === '1') rawAns = 'A';
+    else if (rawAns === '2') rawAns = 'B';
+    else if (rawAns === '3') rawAns = 'C';
+    else if (rawAns === '4') rawAns = 'D';
+    correctAnswer = rawAns;
+    text = text.substring(0, ansMatch.index).trim();
+  }
+
+  // 3. Candidate Option Marker Styles
+  // Ordered from highest specificity to lowest
+  const markerStyles = [
+    {
+      name: 'parentheses_letter',
+      A: /(?:^|[\s\n])\(([aA])\)\s+/g,
+      B: /(?:^|[\s\n])\(([bB])\)\s+/g,
+      C: /(?:^|[\s\n])\(([cC])\)\s+/g,
+      D: /(?:^|[\s\n])\(([dD])\)\s+/g
+    },
+    {
+      name: 'bracket_letter',
+      A: /(?:^|[\s\n])\[([aA])\]\s+/g,
+      B: /(?:^|[\s\n])\[([bB])\]\s+/g,
+      C: /(?:^|[\s\n])\[([cC])\]\s+/g,
+      D: /(?:^|[\s\n])\[([dD])\]\s+/g
+    },
+    {
+      name: 'dot_letter',
+      // Ensure it's not preceded by word character to avoid e.g. "U.S.A."
+      A: /(?:^|[\s\n])(?<![a-zA-Z0-9])([aA])\.\s+/g,
+      B: /(?:^|[\s\n])(?<![a-zA-Z0-9])([bB])\.\s+/g,
+      C: /(?:^|[\s\n])(?<![a-zA-Z0-9])([cC])\.\s+/g,
+      D: /(?:^|[\s\n])(?<![a-zA-Z0-9])([dD])\.\s+/g
+    },
+    {
+      name: 'paren_close_letter',
+      A: /(?:^|[\s\n])(?<![a-zA-Z0-9])([aA])\)\s+/g,
+      B: /(?:^|[\s\n])(?<![a-zA-Z0-9])([bB])\)\s+/g,
+      C: /(?:^|[\s\n])(?<![a-zA-Z0-9])([cC])\)\s+/g,
+      D: /(?:^|[\s\n])(?<![a-zA-Z0-9])([dD])\)\s+/g
+    },
+    {
+      name: 'parentheses_num',
+      A: /(?:^|[\s\n])\((1)\)\s+/g,
+      B: /(?:^|[\s\n])\((2)\)\s+/g,
+      C: /(?:^|[\s\n])\((3)\)\s+/g,
+      D: /(?:^|[\s\n])\((4)\)\s+/g
+    },
+    {
+      name: 'paren_close_num',
+      A: /(?:^|[\s\n])(?<![a-zA-Z0-9])(1)\)\s+/g,
+      B: /(?:^|[\s\n])(?<![a-zA-Z0-9])(2)\)\s+/g,
+      C: /(?:^|[\s\n])(?<![a-zA-Z0-9])(3)\)\s+/g,
+      D: /(?:^|[\s\n])(?<![a-zA-Z0-9])(4)\)\s+/g
+    },
+    {
+      name: 'bracket_num',
+      A: /(?:^|[\s\n])\[(1)\]\s+/g,
+      B: /(?:^|[\s\n])\[(2)\]\s+/g,
+      C: /(?:^|[\s\n])\[(3)\]\s+/g,
+      D: /(?:^|[\s\n])\[(4)\]\s+/g
+    }
+  ];
+
+  let bestSplit = null;
+
+  for (const style of markerStyles) {
+    style.A.lastIndex = 0;
+    style.B.lastIndex = 0;
+    if (style.C) style.C.lastIndex = 0;
+    if (style.D) style.D.lastIndex = 0;
+
+    const aMatches = [...text.matchAll(style.A)];
+    const bMatches = [...text.matchAll(style.B)];
+
+    if (aMatches.length === 0 || bMatches.length === 0) continue;
+
+    // Test each valid pair where B occurs AFTER A
+    for (const aM of aMatches) {
+      const aStart = aM.index + (aM[0].startsWith(' ') || aM[0].startsWith('\n') ? 1 : 0);
+      const aEnd = aM.index + aM[0].length;
+
+      const validB = bMatches.find((bM) => bM.index > aEnd);
+      if (!validB) continue;
+
+      const bStart = validB.index + (validB[0].startsWith(' ') || validB[0].startsWith('\n') ? 1 : 0);
+      const bEnd = validB.index + validB[0].length;
+
+      let cMatches = style.C ? [...text.matchAll(style.C)] : [];
+      let validC = cMatches.find((cM) => cM.index > bEnd);
+      let cStart = validC ? validC.index + (validC[0].startsWith(' ') || validC[0].startsWith('\n') ? 1 : 0) : null;
+      let cEnd = validC ? validC.index + validC[0].length : null;
+
+      let dMatches = (style.D && validC) ? [...text.matchAll(style.D)] : [];
+      let validD = dMatches.find((dM) => dM.index > cEnd);
+      let dStart = validD ? validD.index + (validD[0].startsWith(' ') || validD[0].startsWith('\n') ? 1 : 0) : null;
+      let dEnd = validD ? validD.index + validD[0].length : null;
+
+      let score = 2; // Matched A and B
+      if (validC) score += 2;
+      if (validD) score += 2;
+
+      // Question prompt is strictly everything BEFORE the A marker
+      const questionPrompt = text.substring(0, aStart).trim();
+      const optionA = text.substring(aEnd, bStart).trim();
+      let optionB = '';
+      let optionC = '';
+      let optionD = '';
+
+      if (validC) {
+        optionB = text.substring(bEnd, cStart).trim();
+        if (validD) {
+          optionC = text.substring(cEnd, dStart).trim();
+          optionD = text.substring(dEnd).trim();
+        } else {
+          optionC = text.substring(cEnd).trim();
+        }
+      } else {
+        optionB = text.substring(bEnd).trim();
+      }
+
+      // Check if question prompt has meaningful length
+      if (questionPrompt.length >= 3 && (!bestSplit || score > bestSplit.score)) {
+        bestSplit = {
+          score,
+          questionPrompt,
+          optionA,
+          optionB,
+          optionC,
+          optionD,
+          correctAnswer,
+          hasSeparatedOptions: true
+        };
+      }
+    }
+  }
+
+  if (bestSplit) {
+    return {
+      qNumber,
+      questionText: bestSplit.questionPrompt,
+      optionA: cleanOptionText(bestSplit.optionA),
+      optionB: cleanOptionText(bestSplit.optionB),
+      optionC: cleanOptionText(bestSplit.optionC),
+      optionD: cleanOptionText(bestSplit.optionD),
+      correctAnswer: bestSplit.correctAnswer,
+      hasSeparatedOptions: true
+    };
+  }
+
+  // Fallback: If no clear sequence detected, return cleaned text with empty options
+  return {
+    qNumber,
+    questionText: text,
+    optionA: '',
+    optionB: '',
+    optionC: '',
+    optionD: '',
+    correctAnswer,
+    hasSeparatedOptions: false
+  };
+}
+
+/**
+ * Splits full textbook page text into separate question blocks.
+ * Avoids falsely treating numbered options (1), (2), (3), (4) as new questions.
+ * 
+ * @param {string} rawPageText 
+ * @returns {Array<{ number: string, rawText: string }>}
+ */
+export function splitPageIntoQuestions(rawPageText) {
+  if (!rawPageText || typeof rawPageText !== 'string') return [];
+
+  const lines = rawPageText.split(/\r?\n/);
+  
+  const isPreambleOrHeader = (line) => {
+    const t = line.trim();
+    return /^(?:page\s*\d+|chapter\s*\d+|unit\s*\d+|section\s*[a-z0-9]|exercise|practice\s*(?:set|test|paper)?|aptitude\s*(?:test|questions?)|objective\s*questions?|part\s*[a-z0-9])/i.test(t);
+  };
+
+  // Question boundary pattern (e.g. "1.", "1)", "1:", "1 -", "Q1.", "Q.1", "Question 1:")
+  const qStartPattern = /^\s*(?:#{1,4}\s*)?(?:\*\*)?(?:(?:Q(?:uestion)?\.?\s*#?\s*(\d+)|\b(\d+)\b)[\.\:\)\-\]](?!\d)|\[(?:Q(?:uestion)?\.?\s*)?(\d+)\])(?:\*\*)?\s*(.*)$/i;
+
+  const questions = [];
+  let currentChunk = null;
+  let currentQNum = 0;
+  let hasEncounteredOptionsInCurrent = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    const rawLine = lines[i];
+    const line = rawLine.trim();
+    if (!line) {
+      if (currentChunk) currentChunk.lines.push('');
+      continue;
+    }
+
+    if (isPreambleOrHeader(line) && !currentChunk) {
+      // Skip top-of-page book headers
+      continue;
+    }
+
+    const qMatch = line.match(qStartPattern);
+    let isNewQuestion = false;
+    let matchedNum = null;
+
+    if (qMatch) {
+      matchedNum = parseInt(qMatch[1] || qMatch[2] || qMatch[3], 10);
+      
+      const hasExplicitQ = /^\s*(?:Q(?:uestion)?\.?\s*#?\s*\d+)/i.test(line);
+      const afterOptions = hasEncounteredOptionsInCurrent;
+      const isSequential = matchedNum === currentQNum + 1 || matchedNum > currentQNum;
+
+      if (hasExplicitQ || afterOptions || isSequential || currentChunk === null) {
+        // Guard against numbered options like (1) or 1) inside a question
+        const isLikelyNumberedOption = (matchedNum >= 1 && matchedNum <= 4) && 
+          currentChunk && 
+          !afterOptions && 
+          currentChunk.lines.join(' ').length > 25 &&
+          (/^\s*(?:\([1-4]\)|\[[1-4]\]|[1-4]\))\s+/.test(line)) &&
+          (line.length < 50 || /\([2-4]\)|[2-4]\)/.test(line));
+
+        if (!isLikelyNumberedOption) {
+          isNewQuestion = true;
+        }
+      }
+    }
+
+    if (isNewQuestion) {
+      if (currentChunk && currentChunk.lines.join(' ').trim().length > 10) {
+        questions.push({
+          number: currentChunk.number,
+          rawText: currentChunk.lines.join('\n').trim()
+        });
+      }
+      currentQNum = matchedNum || (currentQNum + 1);
+      hasEncounteredOptionsInCurrent = false;
+      currentChunk = {
+        number: currentQNum.toString(),
+        lines: [rawLine]
+      };
+    } else {
+      if (currentChunk) {
+        currentChunk.lines.push(rawLine);
+        // Check if line contains option markers
+        if (/(?:\([a-eA-E1-4]\)|\[[a-eA-E1-4]\]|\b[a-dA-D]\.|\b[a-dA-D]\))\s+/.test(line)) {
+          hasEncounteredOptionsInCurrent = true;
+        }
+      } else if (line.length > 10 && !isPreambleOrHeader(line)) {
+        currentQNum = 1;
+        currentChunk = {
+          number: '1',
+          lines: [rawLine]
+        };
+      }
+    }
+  }
+
+  if (currentChunk && currentChunk.lines.join(' ').trim().length > 10) {
+    questions.push({
+      number: currentChunk.number,
+      rawText: currentChunk.lines.join('\n').trim()
+    });
+  }
+
+  return questions;
+}
+
+/**
+ * Main parser entry point: parses raw OCR text into structured question objects.
  * 
  * @param {string} rawText - OCR output text
  * @param {object} metadata - Default metadata (topic, difficulty, pageNumber, marks)
@@ -76,188 +383,76 @@ export function parseTextbookQuestions(rawText, metadata = {}) {
   // Check for standalone answer keys at the bottom (e.g. Answers: 1. A, 2. C)
   const { bodyText, answerKeyMap } = extractEmbeddedAnswerKey(cleaned);
 
-  const lines = bodyText.split('\n');
+  // Split into question blocks
+  let blocks = splitPageIntoQuestions(bodyText);
 
-  // Question boundary regexes:
-  // e.g.: "1.", "1)", "1:", "1 -", "(1)", "[1]", "Q1.", "Q.1", "Q 1", "Question 1:"
-  const qStartRegex = /^(?:#{1,4}\s*)?(?:\*\*)?(?:(?:Q(?:uestion)?\.?\s*#?\s*(\d+)|\b(\d+)\b)[\.\:\)\-\]]|\((?:Q(?:uestion)?\.?\s*)?(\d+)\)|\[(?:Q(?:uestion)?\.?\s*)?(\d+)\])(?:\*\*)?\s*(.*)$/i;
-
-  const rawChunks = [];
-  let currentChunk = null;
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const trimmed = line.trim();
-    if (!trimmed && !currentChunk) continue;
-
-    const qMatch = trimmed.match(qStartRegex);
-
-    if (qMatch) {
-      const qNum = qMatch[1] || qMatch[2] || qMatch[3] || qMatch[4] || (rawChunks.length + 1).toString();
-      const firstLineText = qMatch[5] || '';
-
-      if (currentChunk && (currentChunk.lines.length > 0 || currentChunk.firstLine)) {
-        rawChunks.push(currentChunk);
-      }
-
-      currentChunk = {
-        number: qNum,
-        firstLine: firstLineText,
-        lines: firstLineText ? [firstLineText] : []
-      };
-    } else if (currentChunk) {
-      currentChunk.lines.push(line);
-    } else {
-      // First preamble lines before question 1
-      const isHeader = /^(?:page\s*\d+|chapter|unit|section|aptitude|exercise|sample|test|practice)/i.test(trimmed);
-      if (!isHeader && trimmed.length > 5) {
-        currentChunk = {
-          number: '1',
-          firstLine: line,
-          lines: [line]
-        };
-      }
-    }
-  }
-
-  if (currentChunk && currentChunk.lines.length > 0) {
-    rawChunks.push(currentChunk);
-  }
-
-  // Fallback: If only 1 chunk was detected but there are double-newlines separating questions
-  let parsedChunks = rawChunks;
-  if (parsedChunks.length <= 1 && bodyText.includes('\n\n')) {
-    const blocks = bodyText.split(/\n\s*\n+/).filter((b) => b.trim().length > 15);
-    if (blocks.length > 1) {
-      parsedChunks = blocks.map((blk, idx) => ({
+  // Fallback: If only 1 or 0 block detected, try double-newline blocks
+  if (blocks.length <= 1 && bodyText.includes('\n\n')) {
+    const rawParagraphs = bodyText.split(/\n\s*\n+/).filter((b) => b.trim().length > 15);
+    if (rawParagraphs.length > 1) {
+      blocks = rawParagraphs.map((blk, idx) => ({
         number: (idx + 1).toString(),
-        lines: blk.split('\n')
+        rawText: blk.trim()
       }));
     }
   }
 
-  // Option regex patterns:
-  // Option prefixes: A), A., (A), [A], a), (a), 1), (1)
-  const optionPrefixRegex = /^(?:[\*\-\•\+]\s*)?(?:\*\*)?(?:[\(\[]?([A-Da-d])[\.\)\]\:\-]|(?:\b([1-4])[\.\)\]]))(?:\*\*)?\s*(.*)$/;
-  const inlineOptionRegex = /(?:^|\s+)(?:[\(\[]?([A-Da-d])[\.\)\]\:\-]|\b([A-Da-d])\))\s+(.*?)(?=(?:\s+[\(\[]?[A-Da-d][\.\)\]\:\-]|\s+\b[A-Da-d]\)|$))/g;
-  const inlineAnswerRegex = /^(?:[\*\-\•]\s*)?(?:\*\*)?(?:Correct\s*)?(?:Answer|Ans|Option|Key)\s*(?:is|\:|\-)?\s*(?:\*\*)?\s*(?:Option\s*)?[\(\[]?([A-Da-d1-4])[\)\]\.\s]?/i;
+  if (blocks.length === 0 && bodyText.length > 10) {
+    blocks = [{ number: '1', rawText: bodyText }];
+  }
 
   const results = [];
 
-  parsedChunks.forEach((chunk, index) => {
-    const chunkLines = chunk.lines;
-    let questionTextLines = [];
-    let options = { A: '', B: '', C: '', D: '' };
-    let correctAnswer = answerKeyMap[chunk.number] || answerKeyMap[(index + 1).toString()] || '';
-    let readingOptions = false;
-    let lastOptionKey = null;
+  blocks.forEach((block, index) => {
+    const extracted = extractQuestionAndOptions(block.rawText);
 
-    for (let j = 0; j < chunkLines.length; j++) {
-      let rawLine = chunkLines[j];
-      let line = rawLine.trim();
-      if (!line) continue;
+    const questionNumber = extracted.qNumber || block.number || (index + 1).toString();
+    const finalAnswer = extracted.correctAnswer || answerKeyMap[questionNumber] || answerKeyMap[(index + 1).toString()] || '';
 
-      // Check if line is an answer key line
-      const ansMatch = line.match(inlineAnswerRegex);
-      if (ansMatch) {
-        let val = ansMatch[1].toUpperCase();
-        if (val === '1') val = 'A';
-        else if (val === '2') val = 'B';
-        else if (val === '3') val = 'C';
-        else if (val === '4') val = 'D';
-
-        if (['A', 'B', 'C', 'D'].includes(val)) {
-          correctAnswer = val;
-        }
-        continue;
-      }
-
-      // Check for inline options on single line (e.g. "(A) 12  (B) 15  (C) 18  (D) 24")
-      const inlineMatches = [...line.matchAll(inlineOptionRegex)];
-      if (inlineMatches.length >= 2) {
-        inlineMatches.forEach((m) => {
-          let letter = (m[1] || m[2]).toUpperCase();
-          if (['A', 'B', 'C', 'D'].includes(letter)) {
-            options[letter] = cleanOptionText(m[3]);
-          }
-        });
-        readingOptions = true;
-        continue;
-      }
-
-      // Check for standard line-starting option (e.g. "A) 24 meters")
-      const optMatch = line.match(optionPrefixRegex);
-      if (optMatch) {
-        let letter = (optMatch[1] || '').toUpperCase();
-        let numIndex = optMatch[2];
-        if (numIndex) {
-          letter = numIndex === '1' ? 'A' : numIndex === '2' ? 'B' : numIndex === '3' ? 'C' : 'D';
-        }
-
-        if (['A', 'B', 'C', 'D'].includes(letter)) {
-          readingOptions = true;
-          lastOptionKey = letter;
-          options[letter] = cleanOptionText(optMatch[3] || '');
-          continue;
-        }
-      }
-
-      // If we are already in options mode and this line doesn't start with a new option, append to last option
-      if (readingOptions && lastOptionKey) {
-        options[lastOptionKey] = (options[lastOptionKey] + ' ' + cleanOptionText(line)).trim();
-      } else {
-        // Still part of question prompt text
-        questionTextLines.push(line);
-      }
-    }
-
-    const questionText = cleanQuestionText(questionTextLines.join(' '));
-
-    // Evaluate confidence and identify potential extraction issues
     const issues = [];
-    const hasOptions = Boolean(options.A && options.B);
-    const hasAllOptions = Boolean(options.A && options.B && options.C && options.D);
-    const hasText = questionText.length > 5;
-    const hasAnswer = Boolean(correctAnswer && ['A', 'B', 'C', 'D'].includes(correctAnswer));
+    const hasOptions = Boolean(extracted.optionA && extracted.optionB);
+    const hasAllOptions = Boolean(extracted.optionA && extracted.optionB && extracted.optionC && extracted.optionD);
+    const hasText = extracted.questionText.length > 5;
+    const hasAnswer = Boolean(finalAnswer && ['A', 'B', 'C', 'D'].includes(finalAnswer));
 
     if (!hasText) {
-      issues.push('Question prompt is empty or unclear');
+      issues.push('Question statement is empty or unclear');
     }
     if (!hasOptions) {
-      issues.push('Missing answer options');
+      issues.push('Could not detect distinct options (A, B, C, D)');
     } else if (!hasAllOptions) {
-      const foundCount = Object.values(options).filter(Boolean).length;
-      issues.push(`Found ${foundCount}/4 options`);
+      const foundCount = [extracted.optionA, extracted.optionB, extracted.optionC, extracted.optionD].filter(Boolean).length;
+      issues.push(`Detected ${foundCount}/4 options`);
     }
 
     if (!hasAnswer) {
       issues.push('Teacher needs to select correct answer');
     }
 
-    // Check for math uncertainty (e.g., unmatched brackets, rogue question marks)
-    if (/\?{2,}/.test(questionText) || /[\uFFFD]/.test(questionText)) {
-      issues.push('Unclear characters detected in math formula');
+    // Check for math uncertainty (e.g., replacement character or multiple unparsed question marks)
+    if (/[\uFFFD]/.test(extracted.questionText)) {
+      issues.push('Unclear character in mathematical equation');
     }
 
     const needsReview = issues.length > 0;
-    const confidence = !hasText ? 0.2 : !hasOptions ? 0.4 : !hasAllOptions ? 0.7 : hasAnswer ? 0.95 : 0.85;
+    const confidence = !hasText ? 0.2 : !hasOptions ? 0.35 : !hasAllOptions ? 0.7 : hasAnswer ? 0.95 : 0.85;
 
     results.push({
       id: 'tb_' + Date.now() + '_' + index + '_' + Math.random().toString(36).substring(2, 6),
       displayIndex: index + 1,
-      originalNumber: chunk.number,
-      questionText: questionText,
-      optionA: options.A || '',
-      optionB: options.B || '',
-      optionC: options.C || '',
-      optionD: options.D || '',
+      originalNumber: questionNumber,
+      questionText: extracted.questionText,
+      optionA: extracted.optionA || '',
+      optionB: extracted.optionB || '',
+      optionC: extracted.optionC || '',
+      optionD: extracted.optionD || '',
       optionsList: [
-        { key: 'A', text: options.A || '' },
-        { key: 'B', text: options.B || '' },
-        { key: 'C', text: options.C || '' },
-        { key: 'D', text: options.D || '' }
+        { key: 'A', text: extracted.optionA || '' },
+        { key: 'B', text: extracted.optionB || '' },
+        { key: 'C', text: extracted.optionC || '' },
+        { key: 'D', text: extracted.optionD || '' }
       ],
-      correctAnswer: correctAnswer || '',
+      correctAnswer: finalAnswer,
       marks: Number(metadata.marks) || 1,
       negativeMarks: Number(metadata.negativeMarks) || 0,
       topic: metadata.topic || 'Quantitative Aptitude',
@@ -294,17 +489,6 @@ function cleanOptionText(text) {
   return text
     .replace(/^[\*\-\•\:\.\)\s]+/, '')
     .replace(/[\*\s]+$/, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-/**
- * Cleans question prompt text removing question numbers at the start
- */
-function cleanQuestionText(text) {
-  if (!text) return '';
-  return text
-    .replace(/^\s*(?:#{1,4}\s*)?(?:\*\*)?(?:(?:Q(?:uestion)?\.?\s*#?\s*\d+|\b\d+\b)[\.\:\)\-\]]|\((?:Q(?:uestion)?\.?\s*)?\d+\)|\[(?:Q(?:uestion)?\.?\s*)?\d+\])(?:\*\*)?\s*/i, '')
     .replace(/\s+/g, ' ')
     .trim();
 }
