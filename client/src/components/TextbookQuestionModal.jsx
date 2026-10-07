@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import toast from 'react-hot-toast';
 import { 
@@ -57,6 +58,7 @@ export default function TextbookQuestionModal({
   initialTopic = 'Quantitative Aptitude',
   isAssessmentMode = true
 }) {
+  const navigate = useNavigate();
   // Wizard steps: 'upload' | 'processing' | 'review'
   const [step, setStep] = useState('upload');
   
@@ -528,11 +530,11 @@ export default function TextbookQuestionModal({
     }
   };
 
-  // Final Action: Save and add questions to assessment
-  const handleSaveToAssessment = async () => {
+  // Final Action: Save and add questions
+  const handleSaveToAssessment = async (goToCreateAssessment = false) => {
     const selected = questions.filter((q) => q.isSelected);
     if (selected.length === 0) {
-      toast.error('Please select at least 1 question to add to the assessment');
+      toast.error('Please select at least 1 question');
       return;
     }
 
@@ -568,15 +570,19 @@ export default function TextbookQuestionModal({
       };
 
       const res = await api.post('/questions/bulk', payload);
-      toast.success(res.data.message || `Added ${res.data.addedCount} questions to assessment!`);
+      toast.success(res.data.message || `Saved ${res.data.addedCount} questions successfully!`);
 
       if (onQuestionsAdded) {
         await onQuestionsAdded(res.data);
       }
 
       onClose();
+
+      if (goToCreateAssessment) {
+        navigate('/teacher/create-test');
+      }
     } catch (err) {
-      console.error('Failed to add questions to assessment:', err);
+      console.error('Failed to save questions:', err);
       toast.error(err.response?.data?.error || 'Failed to save questions');
     } finally {
       setIsSubmitting(false);
@@ -1438,7 +1444,7 @@ export default function TextbookQuestionModal({
                 <span>← Upload More Pages</span>
               </button>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap justify-end">
                 <button
                   type="button"
                   onClick={onClose}
@@ -1447,19 +1453,43 @@ export default function TextbookQuestionModal({
                   Cancel
                 </button>
 
-                <button
-                  type="button"
-                  disabled={isSubmitting || selectedCount === 0}
-                  onClick={handleSaveToAssessment}
-                  className="btn-primary text-xs py-2.5 px-6 flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-md font-bold"
-                >
-                  <CheckCircleIcon className="w-4 h-4" />
-                  <span>
-                    {isSubmitting
-                      ? 'Adding to Assessment...'
-                      : `Add ${selectedCount} Selected Questions to Assessment →`}
-                  </span>
-                </button>
+                {!isAssessmentMode ? (
+                  <>
+                    <button
+                      type="button"
+                      disabled={isSubmitting || selectedCount === 0}
+                      onClick={() => handleSaveToAssessment(false)}
+                      className="btn-secondary text-xs py-2 px-3.5 flex items-center gap-1.5 font-semibold text-slate-700 hover:bg-slate-100"
+                    >
+                      <CheckCircleIcon className="w-4 h-4 text-emerald-600" />
+                      <span>Save to Bank ({selectedCount})</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={isSubmitting || selectedCount === 0}
+                      onClick={() => handleSaveToAssessment(true)}
+                      className="btn-primary text-xs py-2 px-4 flex items-center gap-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md font-bold"
+                    >
+                      <SparklesIcon className="w-4 h-4" />
+                      <span>Save & Create Assessment 🚀</span>
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={isSubmitting || selectedCount === 0}
+                    onClick={() => handleSaveToAssessment(false)}
+                    className="btn-primary text-xs py-2.5 px-6 flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-md font-bold"
+                  >
+                    <CheckCircleIcon className="w-4 h-4" />
+                    <span>
+                      {isSubmitting
+                        ? 'Adding to Assessment...'
+                        : `Add ${selectedCount} Selected Questions to Assessment →`}
+                    </span>
+                  </button>
+                )}
               </div>
             </>
           )}

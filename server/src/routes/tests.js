@@ -27,7 +27,7 @@ router.get('/', authenticate, requireTeacher, async (req, res) => {
     // Return all institutional tests for teachers, excluding deleted ones
     const tests = await prisma.test.findMany({
       where: {
-        isDeleted: false
+        isDeleted: { not: true }
       },
       include: {
         _count: { select: { questions: true, attempts: true } }
@@ -331,33 +331,29 @@ router.patch('/:id/activate', authenticate, requireTeacher, async (req, res) => 
 router.get('/available', authenticate, requireStudent, async (req, res) => {
   try {
     const now = new Date();
-    const nowMs = Date.now();
 
-    // 1. Fetch or reuse cached active test definitions (re-evaluates every 15s or on teacher mutation)
-    if (!cachedActiveTests || (nowMs - cachedActiveTestsTime) > CACHE_TTL_MS) {
-      cachedActiveTests = await prisma.test.findMany({
-        where: {
-          isActive: true,
-          isDeleted: false,
-          AND: [
-            { OR: [{ scheduledAt: null }, { scheduledAt: { lte: now } }] },
-            { OR: [{ deadline: null }, { deadline: { gte: now } }] },
-          ]
-        },
-        include: { 
-          _count: { select: { questions: true } }
-        },
-        orderBy: { createdAt: 'desc' }
-      });
-      cachedActiveTestsTime = nowMs;
-    }
+    // 1. Fetch fresh active tests (excluding deleted or expired assessments)
+    const activeTests = await prisma.test.findMany({
+      where: {
+        isActive: true,
+        isDeleted: { not: true },
+        OR: [
+          { deadline: null },
+          { deadline: { gte: now } }
+        ]
+      },
+      include: { 
+        _count: { select: { questions: true } }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
 
-    if (!cachedActiveTests.length) {
+    if (!activeTests.length) {
       return res.json([]);
     }
 
-    // 2. Fetch only the requesting student's attempts for these active tests (fast indexed lookup)
-    const testIds = cachedActiveTests.map(t => t.id);
+    // 2. Fetch only the requesting student's attempts for these active tests
+    const testIds = activeTests.map(t => t.id);
     const studentAttempts = await prisma.testAttempt.findMany({
       where: {
         studentId: req.user.id,
@@ -384,11 +380,16 @@ router.get('/available', authenticate, requireStudent, async (req, res) => {
       attemptsByTestId.get(att.testId).push(att);
     }
 
-    const merged = cachedActiveTests.map(test => ({
-      ...test,
-      attempts: attemptsByTestId.get(test.id) || []
-    }));
+    const merged = activeTests.map(test => {
+      const isUpcoming = Boolean(test.scheduledAt && new Date(test.scheduledAt) > now);
+      return {
+        ...test,
+        isUpcoming,
+        attempts: attemptsByTestId.get(test.id) || []
+      };
+    });
 
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
     res.json(merged);
   } catch (err) {
     console.error('Available tests error:', err);

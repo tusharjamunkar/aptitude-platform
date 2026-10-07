@@ -358,15 +358,20 @@ export default function CreateTest() {
       const updatedList = res.data || [];
       setQuestions(updatedList);
 
-      // Automatically select the newly created questions into this assessment!
-      const currentIds = new Set(selectedQuestions);
-      const newlyCreated = updatedList
-        .filter((q) => !currentIds.has(q.id))
-        .slice(0, bulkResponse?.addedCount || 10);
-      
-      const newSelectedIds = Array.from(new Set([...selectedQuestions, ...newlyCreated.map((q) => q.id)]));
-      setSelectedQuestions(newSelectedIds);
-      toast.success(`Selected ${newlyCreated.length} newly added questions for this assessment!`);
+      const createdIds = bulkResponse?.createdIds || bulkResponse?.createdQuestions?.map(q => q.id) || [];
+      let toSelect = [];
+      if (createdIds.length > 0) {
+        toSelect = createdIds;
+      } else {
+        const currentIds = new Set(selectedQuestions);
+        const newlyCreated = updatedList
+          .filter((q) => !currentIds.has(q.id))
+          .slice(0, bulkResponse?.addedCount || 10);
+        toSelect = newlyCreated.map(q => q.id);
+      }
+
+      setSelectedQuestions((prev) => Array.from(new Set([...prev, ...toSelect])));
+      toast.success(`Selected ${toSelect.length} newly added question(s) for this assessment!`);
     } catch (err) {
       console.error('Error refreshing questions after bulk import:', err);
     }
@@ -378,15 +383,20 @@ export default function CreateTest() {
       const updatedList = res.data || [];
       setQuestions(updatedList);
 
-      // Automatically select the newly created textbook questions into this assessment!
-      const currentIds = new Set(selectedQuestions);
-      const newlyCreated = updatedList
-        .filter((q) => !currentIds.has(q.id))
-        .slice(0, bulkResponse?.addedCount || 10);
-      
-      const newSelectedIds = Array.from(new Set([...selectedQuestions, ...newlyCreated.map((q) => q.id)]));
-      setSelectedQuestions(newSelectedIds);
-      toast.success(`Selected ${newlyCreated.length} textbook question(s) for this assessment!`);
+      const createdIds = bulkResponse?.createdIds || bulkResponse?.createdQuestions?.map(q => q.id) || [];
+      let toSelect = [];
+      if (createdIds.length > 0) {
+        toSelect = createdIds;
+      } else {
+        const currentIds = new Set(selectedQuestions);
+        const newlyCreated = updatedList
+          .filter((q) => !currentIds.has(q.id))
+          .slice(0, bulkResponse?.addedCount || 10);
+        toSelect = newlyCreated.map(q => q.id);
+      }
+
+      setSelectedQuestions((prev) => Array.from(new Set([...prev, ...toSelect])));
+      toast.success(`Selected ${toSelect.length} textbook question(s) for this assessment!`);
     } catch (err) {
       console.error('Error refreshing questions after textbook import:', err);
     }

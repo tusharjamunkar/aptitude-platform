@@ -10,6 +10,7 @@ router.get('/', async (req, res) => {
   try {
     const questions = await prisma.question.findMany({
       where: { createdBy: req.user.id },
+      orderBy: { createdAt: 'desc' },
       include: {
         tests: {
           select: { id: true, title: true, subject: true, topic: true, createdAt: true }
@@ -192,16 +193,33 @@ router.post('/bulk', async (req, res) => {
     }
 
     let createdCount = 0;
+    let createdQuestions = [];
     if (toInsert.length > 0) {
       const result = await prisma.question.createMany({
         data: toInsert
       });
       createdCount = result.count;
+
+      createdQuestions = await prisma.question.findMany({
+        where: { createdBy: req.user.id },
+        orderBy: { createdAt: 'desc' },
+        take: toInsert.length,
+        select: {
+          id: true,
+          questionText: true,
+          topic: true,
+          difficulty: true,
+          marks: true,
+          sourceExam: true
+        }
+      });
     }
 
     res.status(201).json({
       message: `Successfully processed ${questions.length} questions. Added ${createdCount} new questions.`,
       addedCount: createdCount,
+      createdQuestions,
+      createdIds: createdQuestions.map(q => q.id),
       skippedCount: duplicates.length && skipDuplicates ? duplicates.length : 0,
       duplicatesDetected: duplicates.length,
       duplicates

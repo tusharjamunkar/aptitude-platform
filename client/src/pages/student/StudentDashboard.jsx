@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import StatCard from '../../components/StatCard';
 import TopicBadge from '../../components/TopicBadge';
 import YouTubeCard from '../../components/YouTubeCard';
-import { BookOpenIcon, ClockIcon, CheckCircleIcon, TrophyIcon, ShieldCheckIcon, AlertIcon } from '../../components/Icons';
+import { BookOpenIcon, ClockIcon, CheckCircleIcon, TrophyIcon, ShieldCheckIcon, AlertIcon, RefreshIcon } from '../../components/Icons';
 
 export default function StudentDashboard() {
   const { user } = useAuth();
@@ -25,10 +25,13 @@ export default function StudentDashboard() {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      // Fetch available tests and filter out legacy/archived assessments
-      const testsRes = await api.get('/tests/available').catch(() => ({ data: [] }));
+      // Fetch available tests without stale artificial filters
+      const testsRes = await api.get('/tests/available', {
+        params: { _t: Date.now() },
+        headers: { 'Cache-Control': 'no-cache' }
+      }).catch(() => ({ data: [] }));
       const testList = (testsRes.data || []).filter(
-        (t) => t.id !== 'cmtoxcmo500326psc7zus19at' && !t.title?.toLowerCase().trim().startsWith('test 1')
+        (t) => !t.isDeleted && !t.title?.startsWith('[DELETED]')
       );
       setAvailableTests(testList);
 
@@ -160,12 +163,22 @@ export default function StudentDashboard() {
               Assigned Assessments & Practice Tests
             </h2>
             <p className="text-xs text-slate-500">
-              45-minute timed examinations. You can retake completed tests anytime to improve your score.
+              Timed examinations. You can retake completed tests anytime to improve your score.
             </p>
           </div>
-          <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200">
-            {availableTests.length} Tests
-          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={fetchDashboardData}
+              className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors text-xs flex items-center gap-1 font-medium border border-slate-200"
+              title="Refresh assessments list"
+            >
+              <RefreshIcon className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">Refresh</span>
+            </button>
+            <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200">
+              {availableTests.length} Tests
+            </span>
+          </div>
         </div>
 
         {loading ? (
@@ -192,6 +205,7 @@ export default function StudentDashboard() {
               const latestPct = latestAttempt && latestAttempt.totalMarks > 0
                 ? Math.round((latestAttempt.score / latestAttempt.totalMarks) * 100)
                 : null;
+              const isUpcoming = Boolean(test.isUpcoming || (test.scheduledAt && new Date(test.scheduledAt) > new Date()));
 
               return (
                 <div
@@ -223,8 +237,21 @@ export default function StudentDashboard() {
                       {test.description || 'Standard timed examination with automated scoring and anti-cheat tracking.'}
                     </p>
 
+                    {/* Upcoming / Scheduled indicator */}
+                    {isUpcoming && (
+                      <div className="mb-4 p-2.5 bg-amber-50 rounded-lg border border-amber-200 flex items-center justify-between text-xs text-amber-800">
+                        <span className="font-semibold flex items-center gap-1">
+                          <ClockIcon className="w-3.5 h-3.5" />
+                          Scheduled for:
+                        </span>
+                        <span className="font-medium">
+                          {new Date(test.scheduledAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                    )}
+
                     {/* Attempt Status Badge */}
-                    {hasCompleted && (
+                    {hasCompleted && !isUpcoming && (
                       <div className="mb-4 p-2.5 bg-slate-50 rounded-lg border border-slate-100 flex items-center justify-between text-xs">
                         <span className="text-slate-500">
                           Attempts: <strong className="text-slate-800">{previousAttempts.length}</strong>
@@ -242,7 +269,16 @@ export default function StudentDashboard() {
                       <span>Proctored</span>
                     </div>
 
-                    {hasCompleted ? (
+                    {isUpcoming ? (
+                      <button
+                        disabled
+                        className="bg-amber-100 text-amber-800 text-xs py-2 px-3 rounded-lg font-semibold cursor-not-allowed flex items-center gap-1.5 opacity-80"
+                        title={`This test starts at ${new Date(test.scheduledAt).toLocaleString()}`}
+                      >
+                        <ClockIcon className="w-3.5 h-3.5" />
+                        <span>Starts Soon</span>
+                      </button>
+                    ) : hasCompleted ? (
                       <button
                         onClick={() => navigate(`/take-test/${test.id}${hasCompleted ? '?mode=retest' : ''}`)}
                         className="btn-secondary text-xs py-2 px-3.5 font-semibold text-blue-700 border-blue-200 hover:bg-blue-50"
