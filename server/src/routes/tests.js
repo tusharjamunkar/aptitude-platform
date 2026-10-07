@@ -170,10 +170,99 @@ router.put('/:id', authenticate, requireTeacher, async (req, res) => {
   }
 });
 
-// Get single test with questions for editing (teacher only)
-router.get('/:id', authenticate, requireTeacher, async (req, res) => {
+// Student routes - MUST be declared BEFORE /:id parameterized route
+router.get('/available', authenticate, requireStudent, async (req, res) => {
   try {
-    const { id } = req.params;
+    const now = new Date();
+
+    // 1. Fetch fresh active tests (excluding deleted or expired assessments)
+    const activeTests = await prisma.test.findMany({
+      where: {
+        isActive: true,
+        isDeleted: { not: true },
+        OR: [
+          { deadline: null },
+          { deadline: { gte: now } }
+        ]
+      },
+      include: { 
+        _count: { select: { questions: true } }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    if (!activeTests.length) {
+      return res.json([]);
+    }
+
+    // 2. Fetch only the requesting student's attempts for these active tests
+    const testIds = activeTests.map(t => t.id);
+    const studentAttempts = await prisma.testAttempt.findMany({
+      where: {
+        studentId: req.user.id,
+        testId: { in: testIds }
+      },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        testId: true,
+        attemptNumber: true,
+        score: true,
+        totalMarks: true,
+        status: true,
+        createdAt: true
+      }
+    });
+
+    // Group attempts by testId
+    const attemptsByTestId = new Map();
+    for (const att of studentAttempts) {
+      if (!attemptsByTestId.has(att.testId)) {
+        attemptsByTestId.set(att.testId, []);
+      }
+      attemptsByTestId.get(att.testId).push(att);
+    }
+
+    const merged = activeTests.map(test => {
+      const isUpcoming = Boolean(test.scheduledAt && new Date(test.scheduledAt) > now);
+      return {
+        ...test,
+        isUpcoming,
+        attempts: attemptsByTestId.get(test.id) || []
+      };
+    });
+
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+    res.json(merged);
+  } catch (err) {
+    console.error('Available tests error:', err);
+    res.status(500).json({ error: 'Failed to fetch available tests' });
+  }
+});
+
+router.get('/upcoming', authenticate, requireStudent, async (req, res) => {
+  try {
+    const now = new Date();
+    const tests = await prisma.test.findMany({
+      where: { scheduledAt: { gt: now } },
+      orderBy: { scheduledAt: 'asc' }
+    });
+    res.json(tests);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch upcoming tests' });
+  }
+});
+
+// Get single test with questions for editing (teacher only)
+router.get('/:id', authenticate, async (req, res, next) => {
+  const { id } = req.params;
+  if (id === 'available' || id === 'upcoming') {
+    return next();
+  }
+  if (!req.user || req.user.role !== 'TEACHER') {
+    return res.status(403).json({ error: 'Access restricted to instructors only.' });
+  }
+  try {
     const test = await prisma.test.findUnique({
       where: { id },
       include: {
@@ -324,89 +413,6 @@ router.patch('/:id/activate', authenticate, requireTeacher, async (req, res) => 
     res.json(updated);
   } catch (err) {
     res.status(500).json({ error: 'Failed to activate test' });
-  }
-});
-
-// Student routes
-router.get('/available', authenticate, requireStudent, async (req, res) => {
-  try {
-    const now = new Date();
-
-    // 1. Fetch fresh active tests (excluding deleted or expired assessments)
-    const activeTests = await prisma.test.findMany({
-      where: {
-        isActive: true,
-        isDeleted: { not: true },
-        OR: [
-          { deadline: null },
-          { deadline: { gte: now } }
-        ]
-      },
-      include: { 
-        _count: { select: { questions: true } }
-      },
-      orderBy: { createdAt: 'desc' }
-    });
-
-    if (!activeTests.length) {
-      return res.json([]);
-    }
-
-    // 2. Fetch only the requesting student's attempts for these active tests
-    const testIds = activeTests.map(t => t.id);
-    const studentAttempts = await prisma.testAttempt.findMany({
-      where: {
-        studentId: req.user.id,
-        testId: { in: testIds }
-      },
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        testId: true,
-        attemptNumber: true,
-        score: true,
-        totalMarks: true,
-        status: true,
-        createdAt: true
-      }
-    });
-
-    // Group attempts by testId
-    const attemptsByTestId = new Map();
-    for (const att of studentAttempts) {
-      if (!attemptsByTestId.has(att.testId)) {
-        attemptsByTestId.set(att.testId, []);
-      }
-      attemptsByTestId.get(att.testId).push(att);
-    }
-
-    const merged = activeTests.map(test => {
-      const isUpcoming = Boolean(test.scheduledAt && new Date(test.scheduledAt) > now);
-      return {
-        ...test,
-        isUpcoming,
-        attempts: attemptsByTestId.get(test.id) || []
-      };
-    });
-
-    res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
-    res.json(merged);
-  } catch (err) {
-    console.error('Available tests error:', err);
-    res.status(500).json({ error: 'Failed to fetch available tests' });
-  }
-});
-
-router.get('/upcoming', authenticate, requireStudent, async (req, res) => {
-  try {
-    const now = new Date();
-    const tests = await prisma.test.findMany({
-      where: { scheduledAt: { gt: now } },
-      orderBy: { scheduledAt: 'asc' }
-    });
-    res.json(tests);
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch upcoming tests' });
   }
 });
 
